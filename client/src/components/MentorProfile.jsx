@@ -20,15 +20,13 @@ function MentorProfile({ setCurrentPage, userData }) {
     jobRole: '',
     expertise: [],
     yearsOfExperience: '',
-    newExpertise: ''
+    newExpertise: '',
+    stats: {
+      totalTasks: 0,
+      teamsmentored: 0,
+      studentsHelped: 0
+    }
   });
-
-  // Mock mentoring stats
-  const mentoringStats = {
-    totalTasks: 5,
-    teamsmentored: 9,
-    studentsHelped: 32
-  };
 
   // Fetch profile on mount
   useEffect(() => {
@@ -47,7 +45,8 @@ function MentorProfile({ setCurrentPage, userData }) {
           jobRole: response.user.jobRole || '',
           expertise: response.user.expertise || [],
           yearsOfExperience: response.user.yearsOfExperience || '',
-          newExpertise: ''
+          newExpertise: '',
+          stats: response.stats || { totalTasks: 0, teamsmentored: 0, studentsHelped: 0 }
         });
       }
     } catch (err) {
@@ -229,15 +228,15 @@ function MentorProfile({ setCurrentPage, userData }) {
               
               <div className="space-y-4">
                 <div>
-                  <p className="text-2xl font-bold text-gray-800">{mentoringStats.totalTasks}</p>
+                  <p className="text-2xl font-bold text-gray-800">{profileData.stats?.totalTasks || 0}</p>
                   <p className="text-sm text-gray-600">Tasks Created</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-800">{mentoringStats.teamsmentored}</p>
+                  <p className="text-2xl font-bold text-gray-800">{profileData.stats?.teamsmentored || 0}</p>
                   <p className="text-sm text-gray-600">Teams Mentored</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-800">{mentoringStats.studentsHelped}</p>
+                  <p className="text-2xl font-bold text-gray-800">{profileData.stats?.studentsHelped || 0}</p>
                   <p className="text-sm text-gray-600">Students Helped</p>
                 </div>
               </div>

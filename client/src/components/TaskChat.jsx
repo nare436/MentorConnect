@@ -36,7 +36,7 @@ function TaskChat({ taskId, userData }) {
   useEffect(() => {
     if (!userData || !taskId) return;
 
-    const socketInstance = io('http://localhost:3000', { withCredentials: true });
+    const socketInstance = io('http://localhost:5000', { withCredentials: true });
     setSocket(socketInstance);
 
     socketInstance.on('connect', () => {

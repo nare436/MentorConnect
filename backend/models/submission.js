@@ -19,6 +19,17 @@ const submissionSchema = mongoose.Schema({
     default: null
   },
   
+  // Application details
+  applyAs: {
+    type: String,
+    enum: ['individual', 'team'],
+    default: 'individual'
+  },
+  applicantGithubUrl: {
+    type: String,
+    default: ''
+  },
+  
   // Submission details
   githubUrl: {
     type: String,
@@ -40,8 +51,8 @@ const submissionSchema = mongoose.Schema({
   // Status tracking
   status: {
     type: String,
-    enum: ['pending', 'in-progress', 'submitted', 'reviewed'],
-    default: 'pending'
+    enum: ['pending_approval', 'rejected', 'pending', 'in-progress', 'submitted', 'reviewed'],
+    default: 'pending_approval'
   },
   
   // Evaluation

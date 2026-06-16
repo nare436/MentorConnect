@@ -14,8 +14,17 @@ const userSchema = mongoose.Schema({
   },
   password: {
     type: String,
-    required: true
-    // In production, hash with bcrypt before saving
+    required: function() { return this.authProvider === 'local'; }
+    // Only required for local (email/password) signups
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
+  googleId: {
+    type: String,
+    default: ''
   },
   role: {
     type: String,
@@ -50,6 +59,10 @@ const userSchema = mongoose.Schema({
     type: String,
     default: ''
   },
+  badges: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Badge'
+  }],
   
   // Mentor-specific fields
   company: {

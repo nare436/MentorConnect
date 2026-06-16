@@ -26,6 +26,19 @@ const taskSchema = mongoose.Schema({
     default: []
   },
   
+  // Difficulty level
+  difficulty: {
+    type: String,
+    enum: ['Easy', 'Medium', 'Hard'],
+    default: 'Medium'
+  },
+  
+  // Rubric for evaluation
+  rubric: [{
+    criteria: String,
+    points: Number
+  }],
+  
   // Mentor who created the task
   mentorId: {
     type: mongoose.Schema.Types.ObjectId,

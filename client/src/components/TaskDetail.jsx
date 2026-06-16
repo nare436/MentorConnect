@@ -61,7 +61,7 @@ function TaskDetail({ setCurrentPage, userData }) {
     try {
       const response = await contactMentor(taskId, {
         message: contactMessage,
-        mentorId: task.mentorId
+        mentorId: task.mentorId?._id || task.mentorId
       });
       
       if (response.success) {
@@ -85,7 +85,7 @@ function TaskDetail({ setCurrentPage, userData }) {
     try {
       const response = await requestVideoChat(taskId, {
         reason: videoReason,
-        mentorId: task.mentorId
+        mentorId: task.mentorId?._id || task.mentorId
       });
       
       if (response.success) {

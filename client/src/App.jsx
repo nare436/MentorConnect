@@ -19,6 +19,7 @@ import MentorTaskCreate from './components/MentorTaskCreate';
 import MentorEvaluation from './components/MentorEvaluation';
 import TaskChat from './components/TaskChat';
 import TaskDetail from './components/TaskDetail';
+import PublicProfile from './components/PublicProfile';
 
 /* ----------------- HomePage (keeps your Tailwind & props) ----------------- */
 function HomePage({ setCurrentPage }) {
@@ -193,12 +194,6 @@ function AppInner() {
         onLogout={handleLogout}
       />
 
-      {/* Floating TaskChat preserved (keeps tailwind & layout) */}
-      {isLoggedIn && (
-        <div className="fixed bottom-4 right-4 w-80 z-50">
-          <TaskChat taskId="global" userData={userData} />
-        </div>
-      )}
 
       <div className="pt-16">
         <Routes>
@@ -206,7 +201,7 @@ function AppInner() {
           <Route path="/" element={<HomePage setCurrentPage={setCurrentPage} />} />
           <Route
             path="/signup"
-            element={isLoggedIn ? <Navigate to={`/${userRole}/dashboard`} /> : <Signup setCurrentPage={setCurrentPage} />}
+            element={isLoggedIn ? <Navigate to={`/${userRole}/dashboard`} /> : <Signup setCurrentPage={setCurrentPage} onLogin={handleLogin} />}
           />
           <Route
             path="/login"
@@ -261,6 +256,7 @@ function AppInner() {
           <Route path="/tasks" element={<BrowseTasks setCurrentPage={setCurrentPage} />} />
           <Route path="/task/:id" element={<TaskSubmission setCurrentPage={setCurrentPage} userData={userData} />} />
           <Route path="/task/:id/details" element={<TaskDetail setCurrentPage={setCurrentPage} userData={userData} />} />
+          <Route path="/profile/:id" element={isLoggedIn ? <PublicProfile /> : <Navigate to="/login" />} />
 
           {/* Team management, Mentor create/eval routes — add or adjust as needed */}
           <Route path="/team-management" element={<TeamManagement setCurrentPage={setCurrentPage} />} />

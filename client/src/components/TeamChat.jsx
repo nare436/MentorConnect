@@ -38,7 +38,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
   useEffect(() => {
     if (!userData || !teamId) return;
 
-    const socketInstance = io('http://localhost:3000', { withCredentials: true });
+    const socketInstance = io('http://localhost:5000', { withCredentials: true });
     setSocket(socketInstance);
 
     socketInstance.on('connect', () => {

@@ -6,10 +6,7 @@ const connectDB = async () => {
     // Get MongoDB URI from environment variable or use default
     const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/obsidian_circle';
     
-    await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(mongoURI);
     
     console.log(' MongoDB Connected Successfully');
     console.log(` Database: ${mongoose.connection.name}`);

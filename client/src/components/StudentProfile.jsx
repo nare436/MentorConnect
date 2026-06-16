@@ -21,7 +21,12 @@ function StudentProfile({ setCurrentPage, userData }) {
     education: '',
     githubUrl: '',
     linkedinUrl: '',
-    newSkill: ''
+    newSkill: '',
+    stats: {
+      tasksCompleted: 0,
+      tasksActive: 0,
+      badgesEarned: 0
+    }
   });
 
   // Fetch badges
@@ -55,7 +60,8 @@ function StudentProfile({ setCurrentPage, userData }) {
           education: response.user.education || '',
           githubUrl: response.user.githubUrl || '',
           linkedinUrl: response.user.linkedinUrl || '',
-          newSkill: ''
+          newSkill: '',
+          stats: response.stats || { tasksCompleted: 0, tasksActive: 0, badgesEarned: 0 }
         });
       }
     } catch (err) {
@@ -227,6 +233,21 @@ function StudentProfile({ setCurrentPage, userData }) {
                       {profileData.linkedinUrl ? 'LinkedIn Profile' : 'Add LinkedIn'}
                     </a>
                   )}
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Card */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">My Impact</h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-2xl font-bold text-gray-800">{profileData.stats?.tasksCompleted || 0}</p>
+                  <p className="text-sm text-gray-600">Tasks Completed</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-800">{profileData.stats?.tasksActive || 0}</p>
+                  <p className="text-sm text-gray-600">Active Tasks</p>
                 </div>
               </div>
             </div>

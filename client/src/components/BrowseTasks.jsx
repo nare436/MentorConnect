@@ -16,6 +16,8 @@ function BrowseTasks({ setCurrentPage }) {
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [selectedTaskForApply, setSelectedTaskForApply] = useState(null);
   const [githubUrl, setGithubUrl] = useState('');
+  const [applyAs, setApplyAs] = useState('individual');
+  const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     fetchTasks();
@@ -48,6 +50,7 @@ function BrowseTasks({ setCurrentPage }) {
     setSelectedTaskForApply(taskId);
     setShowApplyModal(true);
     setGithubUrl('');
+    setApplyAs('individual');
     setError('');
   };
 
@@ -55,12 +58,12 @@ function BrowseTasks({ setCurrentPage }) {
     e.preventDefault();
     
     if (!githubUrl || !githubUrl.trim()) {
-      setError('Please provide your GitHub repository URL');
+      setError('Please provide your GitHub Profile URL');
       return;
     }
     
     if (!githubUrl.startsWith('http')) {
-      setError('Please provide a valid GitHub repository URL (starting with http)');
+      setError('Please provide a valid GitHub Profile URL (starting with http)');
       return;
     }
 
@@ -68,14 +71,16 @@ function BrowseTasks({ setCurrentPage }) {
     setError('');
 
     try {
-      const response = await applyToTask(selectedTaskForApply, { githubUrl });
+      const response = await applyToTask(selectedTaskForApply, { githubUrl, applyAs, message });
       
       if (response.success) {
-        alert('Application submitted with GitHub repository! The mentor will review your request.');
+        alert('Application submitted! The mentor will review your profile and request.');
         // Refresh tasks to update applicant count
         fetchTasks();
         setShowApplyModal(false);
         setGithubUrl('');
+        setApplyAs('individual');
+        setMessage('');
       }
     } catch (err) {
       setError(err.message || 'Failed to apply to task');
@@ -231,14 +236,8 @@ function BrowseTasks({ setCurrentPage }) {
               </div>
 
               <p className="text-gray-600 mb-4">
-                Please provide your GitHub repository URL to apply for this task
+                Please provide your GitHub Profile URL so the mentor can review your experience.
               </p>
-
-              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
-                  <span className="font-semibold">✓ After applying:</span> You can request video calls with your mentor directly from your dashboard for guidance and feedback.
-                </p>
-              </div>
 
               {error && (
                 <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -249,19 +248,63 @@ function BrowseTasks({ setCurrentPage }) {
               <form onSubmit={handleApplySubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    GitHub Repository URL <span className="text-red-600">*</span>
+                    Apply As <span className="text-red-600">*</span>
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="applyAs" 
+                        value="individual"
+                        checked={applyAs === 'individual'}
+                        onChange={(e) => setApplyAs(e.target.value)}
+                        className="text-gray-800 focus:ring-gray-800"
+                      />
+                      <span className="text-sm text-gray-700">Individual</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="applyAs" 
+                        value="team"
+                        checked={applyAs === 'team'}
+                        onChange={(e) => setApplyAs(e.target.value)}
+                        className="text-gray-800 focus:ring-gray-800"
+                      />
+                      <span className="text-sm text-gray-700">Team</span>
+                    </label>
+                  </div>
+                </div>
+              
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    GitHub Profile URL <span className="text-red-600">*</span>
                   </label>
                   <input
                     type="url"
                     value={githubUrl}
                     onChange={(e) => setGithubUrl(e.target.value)}
-                    placeholder="https://github.com/username/repo"
+                    placeholder="https://github.com/username"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Make sure your repository is public so the mentor can review your code
+                    Provide your profile link so the mentor can review your past projects
                   </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Why are you capable of doing this task? <span className="text-red-600">*</span>
+                  </label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Briefly explain your relevant experience and why you are a good fit..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                    rows="3"
+                    required
+                  />
                 </div>
 
                 <div className="flex gap-3">

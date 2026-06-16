@@ -394,7 +394,18 @@ app.get('/student/profile', isLoggedIn, async (req, res) => {
     }
     
     const user = await userModel.findById(req.user.id).select('-password');
-    res.json({ success: true, user });
+    
+    const tasksCompleted = await submissionModel.countDocuments({ studentId: req.user.id, status: 'reviewed' });
+    const tasksActive = await submissionModel.countDocuments({ studentId: req.user.id, status: 'in-progress' });
+    const badgesEarned = user.badges?.length || 0;
+    
+    const stats = {
+      tasksCompleted,
+      tasksActive,
+      badgesEarned
+    };
+    
+    res.json({ success: true, user, stats });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch profile' });
   }
@@ -496,15 +507,15 @@ app.post('/tasks/:id/apply', isLoggedIn, async (req, res) => {
     }
     
     const taskId = req.params.id;
-    const { githubUrl, teamId } = req.body;
+    const { githubUrl, teamId, applyAs } = req.body;
     
-    // Validate GitHub URL is provided
+    // Validate GitHub Profile URL is provided
     if (!githubUrl || !githubUrl.trim()) {
-      return res.status(400).json({ error: 'GitHub repository URL is required to apply for a task' });
+      return res.status(400).json({ error: 'GitHub Profile URL is required to apply for a task' });
     }
     
     if (!githubUrl.startsWith('http')) {
-      return res.status(400).json({ error: 'Please provide a valid GitHub repository URL' });
+      return res.status(400).json({ error: 'Please provide a valid GitHub Profile URL' });
     }
     
     const task = await taskModel.findById(taskId);
@@ -523,13 +534,14 @@ app.post('/tasks/:id/apply', isLoggedIn, async (req, res) => {
       return res.status(400).json({ error: 'You have already applied to this task' });
     }
     
-    // Create submission with GitHub URL and in-progress status
+    // Create submission with applicantGithubUrl and pending_approval status
     const submission = await submissionModel.create({
       taskId,
       studentId: req.user.id,
-      teamId: teamId || null,
-      githubUrl: githubUrl,
-      status: 'in-progress'  // Changed from 'pending' to 'in-progress' to track work being done
+      teamId: applyAs === 'team' ? teamId : null,
+      applicantGithubUrl: githubUrl,
+      applyAs: applyAs || 'individual',
+      status: 'pending_approval'
     });
     
     // Update task applicants count
@@ -537,7 +549,7 @@ app.post('/tasks/:id/apply', isLoggedIn, async (req, res) => {
       $inc: { applicants: 1 }
     });
     
-    res.json({ success: true, message: 'Applied successfully with GitHub repository', submission });
+    res.json({ success: true, message: 'Application submitted for mentor review', submission });
   } catch (err) {
     res.status(500).json({ error: 'Failed to apply: ' + err.message });
   }
@@ -909,7 +921,22 @@ app.get('/mentor/profile', isLoggedIn, async (req, res) => {
     }
     
     const user = await userModel.findById(req.user.id).select('-password');
-    res.json({ success: true, user });
+    
+    const totalTasks = await taskModel.countDocuments({ mentorId: req.user.id });
+    const mentorTasks = await taskModel.find({ mentorId: req.user.id }).select('_id');
+    const taskIds = mentorTasks.map(t => t._id);
+    const teamsMentored = await submissionModel.countDocuments({ 
+      taskId: { $in: taskIds },
+      status: { $in: ['in-progress', 'reviewed'] }
+    });
+    
+    const stats = {
+      totalTasks,
+      teamsmentored: teamsMentored,
+      studentsHelped: teamsMentored * 2
+    };
+    
+    res.json({ success: true, user, stats });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch profile' });
   }
@@ -992,11 +1019,97 @@ app.get('/mentor/submissions', isLoggedIn, async (req, res) => {
       .find({ taskId: { $in: taskIds } })
       .populate('studentId', 'name email')
       .populate('taskId', 'title')
-      .populate('teamId', 'name');
+      .populate({
+        path: 'teamId',
+        select: 'name members',
+        populate: {
+          path: 'members',
+          select: 'name email'
+        }
+      });
     
     res.json({ success: true, submissions });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch submissions' });
+  }
+});
+
+// Get pending applications for mentor's tasks
+app.get('/mentor/pending-applications', isLoggedIn, async (req, res) => {
+  try {
+    if (req.user.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied. Mentors only.' });
+    }
+    
+    const tasks = await taskModel.find({ mentorId: req.user.id });
+    const taskIds = tasks.map(t => t._id);
+    
+    const applications = await submissionModel
+      .find({ taskId: { $in: taskIds }, status: 'pending_approval' })
+      .populate('studentId', 'name email')
+      .populate('taskId', 'title')
+      .populate({
+        path: 'teamId',
+        select: 'name members',
+        populate: {
+          path: 'members',
+          select: 'name email'
+        }
+      });
+    
+    res.json({ success: true, applications });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch pending applications' });
+  }
+});
+
+// Approve application
+app.post('/mentor/applications/:id/approve', isLoggedIn, async (req, res) => {
+  try {
+    if (req.user.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied. Mentors only.' });
+    }
+    
+    const submission = await submissionModel.findById(req.params.id).populate('taskId');
+    if (!submission) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    if (submission.taskId.mentorId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized to approve this application' });
+    }
+    
+    submission.status = 'in-progress';
+    await submission.save();
+    
+    res.json({ success: true, message: 'Application approved successfully', submission });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to approve application' });
+  }
+});
+
+// Reject application
+app.post('/mentor/applications/:id/reject', isLoggedIn, async (req, res) => {
+  try {
+    if (req.user.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied. Mentors only.' });
+    }
+    
+    const submission = await submissionModel.findById(req.params.id).populate('taskId');
+    if (!submission) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    if (submission.taskId.mentorId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized to reject this application' });
+    }
+    
+    submission.status = 'rejected';
+    await submission.save();
+    
+    res.json({ success: true, message: 'Application rejected successfully', submission });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reject application' });
   }
 });
 
@@ -1075,55 +1188,210 @@ app.get('/team/:id/chat-history', isLoggedIn, async (req, res) => {
 
 // ========== MENTOR ENHANCED APIs ==========
 
-// Get teams that applied for a task
-app.get('/mentor/task/:id/applications', isLoggedIn, async (req, res) => {
+
+
+// ========== VIDEO CHAT HISTORY ==========
+
+// Get video chat history for a task
+app.get('/tasks/:id/video-chat-history', isLoggedIn, async (req, res) => {
+  try {
+    const taskId = req.params.id;
+    
+    const videoChatHistory = await videoChatModel
+      .find({ taskId })
+      .sort({ createdAt: -1 })
+      .populate('studentId', 'name email')
+      .populate('mentorId', 'name email');
+    
+    res.json({ success: true, videoChatHistory });
+  } catch (err) {
+    console.error('Get video chat history error:', err);
+    res.status(500).json({ error: 'Failed to fetch video chat history' });
+  }
+});
+
+// ========== MENTOR EVALUATION ==========
+
+// Evaluate a submission
+app.post('/mentor/evaluate/:submissionId', isLoggedIn, async (req, res) => {
   try {
     if (req.user.role !== 'mentor') {
-      return res.status(403).json({ error: 'Access denied. Mentors only.' });
+      return res.status(403).json({ error: 'Only mentors can evaluate submissions' });
     }
     
-    const task = await taskModel.findById(req.params.id).populate('applications.teamId');
+    const { scores, feedback, totalScore } = req.body;
     
-    if (!task) {
-      return res.status(404).json({ error: 'Task not found' });
+    const submission = await submissionModel.findById(req.params.submissionId)
+      .populate('taskId');
+    
+    if (!submission) {
+      return res.status(404).json({ error: 'Submission not found' });
     }
     
-    // Verify task belongs to mentor
-    if (task.mentorId.toString() !== req.user.id) {
-      return res.status(403).json({ error: 'Unauthorized access to this task' });
+    // Verify the task belongs to this mentor
+    if (submission.taskId.mentorId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'You can only evaluate submissions for your own tasks' });
     }
     
-    // Get detailed application info
-    const detailedApplications = await Promise.all(
-      (task.applications || []).map(async (app) => {
-        const team = await teamModel.findById(app.teamId).populate('members');
-        return {
-          _id: app._id,
-          teamId: app.teamId,
-          teamName: team?.name || 'Unknown Team',
-          memberCount: team?.members?.length || 0,
-          leader: team?.leader,
-          members: team?.members || [],
-          status: app.status || 'pending',
-          appliedAt: app.appliedAt || new Date(),
-          message: app.message || ''
-        };
-      })
+    submission.scores = scores || {};
+    submission.feedback = feedback || '';
+    submission.totalScore = totalScore || 0;
+    submission.status = 'reviewed';
+    submission.reviewedAt = new Date();
+    await submission.save();
+    
+    // Notify the student
+    await notificationModel.create({
+      userId: submission.studentId,
+      type: 'submission_reviewed',
+      title: 'Your submission has been reviewed',
+      message: `Your submission for "${submission.taskId.title}" has been evaluated. Score: ${totalScore || 0}`,
+      relatedTaskId: submission.taskId._id,
+      relatedUserId: req.user.id,
+      isRead: false
+    });
+    
+    res.json({ success: true, message: 'Submission evaluated', submission });
+  } catch (err) {
+    console.error('Evaluation error:', err);
+    res.status(500).json({ error: 'Failed to evaluate submission' });
+  }
+});
+
+// ========== FIREBASE GOOGLE AUTHENTICATION ==========
+
+// Google Auth route - receives Firebase ID token, verifies it, creates/finds user
+app.post('/auth/google', async (req, res) => {
+  try {
+    const { idToken, role } = req.body;
+    
+    if (!idToken) {
+      return res.status(400).json({ error: 'Firebase ID token is required' });
+    }
+    
+    // Verify the Firebase ID token
+    let firebaseAdmin;
+    try {
+      firebaseAdmin = require('./config/firebaseAdmin');
+    } catch (err) {
+      console.error('Firebase Admin not configured:', err.message);
+      return res.status(500).json({ 
+        error: 'Google authentication is not configured yet. Please set up Firebase credentials in .env' 
+      });
+    }
+    
+    let decodedToken;
+    try {
+      decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+    } catch (err) {
+      console.error('Firebase token verification failed:', err);
+      return res.status(401).json({ error: 'Invalid Google authentication token' });
+    }
+    
+    const { uid, email, name, picture } = decodedToken;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email not available from Google account' });
+    }
+    
+    // Check if user already exists
+    let user = await userModel.findOne({ email });
+    
+    if (user) {
+      // Existing user - update Google ID if not set
+      if (!user.googleId) {
+        user.googleId = uid;
+        user.authProvider = user.authProvider === 'local' ? 'local' : 'google';
+        await user.save();
+      }
+    } else {
+      // New user - create account
+      const userRole = role || 'student';
+      
+      user = await userModel.create({
+        name: name || email.split('@')[0],
+        email,
+        googleId: uid,
+        authProvider: 'google',
+        role: userRole,
+        bio: '',
+        skills: [],
+        education: '',
+        company: '',
+        expertise: []
+      });
+    }
+    
+    // Generate JWT token (same as normal login)
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '30d' }
     );
     
-    res.json({ success: true, applications: detailedApplications });
+    // Set secure HTTP-only cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+    
+    res.json({
+      success: true,
+      message: 'Google authentication successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+    
   } catch (err) {
-    console.error('Get applications error:', err);
-    res.status(500).json({ error: 'Failed to fetch applications' });
+    console.error('Google auth error:', err);
+    res.status(500).json({ error: 'Google authentication failed: ' + err.message });
+  }
+});
+
+// Get public profile by ID
+app.get('/profile/:id', isLoggedIn, async (req, res) => {
+  try {
+    const user = await userModel.findById(req.params.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let stats = {};
+    if (user.role === 'mentor') {
+      const totalTasks = await taskModel.countDocuments({ mentorId: user._id });
+      const mentorTasks = await taskModel.find({ mentorId: user._id }).select('_id');
+      const taskIds = mentorTasks.map(t => t._id);
+      const teamsMentored = await submissionModel.countDocuments({ 
+        taskId: { $in: taskIds },
+        status: { $in: ['in-progress', 'reviewed'] }
+      });
+      stats = { totalTasks, teamsmentored: teamsMentored, studentsHelped: teamsMentored * 2 };
+    } else {
+      const tasksCompleted = await submissionModel.countDocuments({ studentId: user._id, status: 'reviewed' });
+      const tasksActive = await submissionModel.countDocuments({ studentId: user._id, status: 'in-progress' });
+      const badgesEarned = user.badges?.length || 0;
+      stats = { tasksCompleted, tasksActive, badgesEarned };
+    }
+
+    res.json({ success: true, user, stats });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch public profile' });
   }
 });
 
 // Start server with Socket.io
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running securely on port ${PORT}`);
   console.log(`🔐 JWT authentication enabled`);
   console.log(`🔒 Bcrypt password hashing active`);
   console.log(`💬 Socket.io chat enabled`);
-  console.log(`📡 CORS enabled for: ${process.env.FRONTEND_URL || 'http://localhost:3001'}`);
-});
+  console.log(`🔥 Firebase Google Auth enabled`);
+  console.log(`📡 CORS enabled for: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+});

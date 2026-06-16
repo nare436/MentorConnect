@@ -1,7 +1,7 @@
 // API utility file for making backend calls
 // Place this in: src/utils/api.js
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'http://localhost:5000';
 
 // Helper function for making API calls
 async function apiCall(endpoint, options = {}) {
@@ -169,6 +169,22 @@ export const getMentorSubmissions = async () => {
   return apiCall('/mentor/submissions');
 };
 
+export const getPendingApplications = async () => {
+  return apiCall('/mentor/pending-applications');
+};
+
+export const approveApplication = async (applicationId) => {
+  return apiCall(`/mentor/applications/${applicationId}/approve`, {
+    method: 'POST',
+  });
+};
+
+export const rejectApplication = async (applicationId) => {
+  return apiCall(`/mentor/applications/${applicationId}/reject`, {
+    method: 'POST',
+  });
+};
+
 export const evaluateSubmission = async (submissionId, evaluationData) => {
   return apiCall(`/mentor/evaluate/${submissionId}`, {
     method: 'POST',
@@ -223,3 +239,18 @@ export const completeVideoChat = async (sessionId, data) => {
 export const getVideoChatHistory = async (taskId) => {
   return apiCall(`/tasks/${taskId}/video-chat-history`);
 };
+
+// ========== GOOGLE AUTHENTICATION ==========
+
+export const googleAuth = async (idToken, role) => {
+  return apiCall('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ idToken, role }),
+  });
+};
+
+// ========== PUBLIC PROFILE ==========
+
+export const getPublicProfile = async (id) => {
+  return apiCall(`/profile/${id}`);
+};

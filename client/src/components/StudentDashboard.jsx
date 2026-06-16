@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Users, Award, Bell, Video, MessageCircle, Clock, X } from 'lucide-react';
+import { BookOpen, Users, Award, Bell, Video, MessageCircle, Clock, X, MessageSquare } from 'lucide-react';
 import { getStudentDashboard, getNotifications } from '../utils/api';
+import TaskChat from './TaskChat';
 
 // Student Dashboard with backend integration
 function StudentDashboard({ setCurrentPage, userData }) {
+  const [activeChatTaskId, setActiveChatTaskId] = useState(null);
   // State for dashboard data
   const [dashboardData, setDashboardData] = useState({
     stats: {
@@ -69,14 +71,13 @@ function StudentDashboard({ setCurrentPage, userData }) {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3000/student/request-video-call', {
+      const response = await fetch(`http://localhost:5000/tasks/${selectedTask._id}/request-video-chat`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          taskId: selectedTask._id,
-          topic: videoCallData.topic,
-          description: videoCallData.description
+          reason: videoCallData.topic + (videoCallData.description ? ` - ${videoCallData.description}` : ''),
+          mentorId: selectedTask.mentorId?._id || selectedTask.mentorId
         })
       });
 
@@ -196,7 +197,16 @@ function StudentDashboard({ setCurrentPage, userData }) {
                             Status: {submission.status}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
-                            Mentor: {submission.taskId?.mentorId?.name || 'Mentor'}
+                            Mentor:{' '}
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentPage(`/profile/${submission.taskId?.mentorId?._id}`);
+                              }}
+                              className="text-blue-600 hover:underline font-medium"
+                            >
+                              {submission.taskId?.mentorId?.name || 'Mentor'}
+                            </button>
                           </p>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -210,6 +220,13 @@ function StudentDashboard({ setCurrentPage, userData }) {
                         </span>
                       </div>
                       <div className="mt-3 flex gap-2">
+                        <button 
+                          onClick={() => setActiveChatTaskId(submission.taskId._id)}
+                          className="flex items-center gap-1 text-sm px-3 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                        >
+                          <MessageSquare size={16} />
+                          Chat
+                        </button>
                         <button 
                           onClick={() => setCurrentPage(`/task/${submission.taskId._id}/details`)}
                           className="flex-1 text-sm px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
@@ -225,7 +242,7 @@ function StudentDashboard({ setCurrentPage, userData }) {
                           className="flex items-center gap-1 text-sm px-3 py-2 bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
                         >
                           <Video size={16} />
-                          Request Call
+                          Call
                         </button>
                       </div>
                     </div>
@@ -414,6 +431,11 @@ function StudentDashboard({ setCurrentPage, userData }) {
           </form>
         </div>
       </div>
+    )}
+    
+    {/* Global Task Chat Overlay */}
+    {activeChatTaskId && (
+      <TaskChat taskId={activeChatTaskId} userData={userData} />
     )}
     </>
   );

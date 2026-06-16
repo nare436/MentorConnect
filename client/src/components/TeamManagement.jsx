@@ -325,7 +325,7 @@ function TeamManagement({ setCurrentPage }) {
                     </div>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    member._id === currentTeam.leaderId
+                    member._id === (currentTeam.leaderId?._id || currentTeam.leaderId)
                       ? 'bg-blue-100 text-blue-800'
                       : 'bg-gray-200 text-gray-800'
                   }`}>

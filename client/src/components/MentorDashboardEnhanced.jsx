@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Users, CheckCircle, Clock, XCircle, Eye, Send, Bell, Github, AlertCircle, MessageCircle, Video, X } from 'lucide-react';
-import { getMentorTasks, getMentorSubmissions, getNotifications } from '../utils/api';
+import { Users, CheckCircle, Clock, XCircle, Eye, Send, Bell, Github, AlertCircle, MessageCircle, Video, X, MessageSquare } from 'lucide-react';
+import { getMentorTasks, getMentorSubmissions, getNotifications, getPendingApplications, approveApplication, rejectApplication } from '../utils/api';
+import TaskChat from './TaskChat';
 
 // Enhanced Mentor Dashboard - Merged with all features + Notifications
 function MentorDashboardEnhanced({ setCurrentPage, userData }) {
   const [tasks, setTasks] = useState([]);
+  const [activeChatTaskId, setActiveChatTaskId] = useState(null);
   const [pendingReviews, setPendingReviews] = useState([]);
   const [inProgressWork, setInProgressWork] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedTask, setSelectedTask] = useState(null);
-  const [applications, setApplications] = useState([]);
-  const [loadingApplications, setLoadingApplications] = useState(false);
   const [activeTab, setActiveTab] = useState('overview'); // overview, applications, progress, reviews, calls, notifications
   const [videoCallRequests, setVideoCallRequests] = useState([]);
   const [ongoingCall, setOngoingCall] = useState(null);
@@ -56,6 +57,12 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
         }));
       }
 
+      // Fetch pending applications
+      const pendingAppsResponse = await getPendingApplications();
+      if (pendingAppsResponse.success) {
+        setPendingRequests(pendingAppsResponse.applications || []);
+      }
+
       // Fetch notifications
       const notificationsResponse = await getNotifications();
       if (notificationsResponse.success) {
@@ -78,41 +85,29 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
     }
   };
 
-  const handleViewApplications = async (task) => {
-    setSelectedTask(task);
-    setLoadingApplications(true);
-    
+  const handleApproveApplication = async (applicationId) => {
     try {
-      const response = await fetch(
-        `http://localhost:3000/mentor/task/${task._id}/applications`,
-        {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-      
-      const data = await response.json();
-      if (response.ok) {
-        setApplications(data.applications || []);
-      } else {
-        setError(data.error || 'Failed to load applications');
+      const response = await approveApplication(applicationId);
+      if (response.success) {
+        alert('Application approved!');
+        fetchAllData(); // refresh data
       }
     } catch (err) {
-      setError('Failed to fetch applications');
-      console.error('Error:', err);
-    } finally {
-      setLoadingApplications(false);
+      setError(err.message || 'Failed to approve application');
     }
   };
 
-  const handleApproveApplication = async (applicationId) => {
-    console.log('Approving application:', applicationId);
-    alert('Application approved!');
-  };
-
   const handleRejectApplication = async (applicationId) => {
-    console.log('Rejecting application:', applicationId);
-    alert('Application rejected!');
+    if (!window.confirm('Are you sure you want to reject this application?')) return;
+    try {
+      const response = await rejectApplication(applicationId);
+      if (response.success) {
+        alert('Application rejected!');
+        fetchAllData(); // refresh data
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to reject application');
+    }
   };
 
   const handleAcceptVideoCall = (request) => {
@@ -320,7 +315,6 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
                         onClick={() => {
                           setSelectedTask(task);
                           setActiveTab('applications');
-                          handleViewApplications(task);
                         }}
                         className="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all"
                       >
@@ -341,7 +335,7 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
                     <div className="text-center py-8">
                       <p className="text-gray-500 text-sm">No tasks created yet</p>
                       <button
-                        onClick={() => setCurrentPage('mentor-task-create')}
+                        onClick={() => setCurrentPage('mentor-create-task')}
                         className="mt-4 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 text-sm"
                       >
                         Create Task
@@ -380,143 +374,99 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
 
           {/* Applications Tab */}
           {activeTab === 'applications' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Your Tasks</h3>
-                <div className="space-y-3">
-                  {tasks.length > 0 ? (
-                    tasks.map(task => (
-                      <button
-                        key={task._id}
-                        onClick={() => {
-                          handleViewApplications(task);
-                          setSelectedTask(task);
-                        }}
-                        className={`w-full text-left p-4 rounded-lg border-l-4 transition-all ${
-                          selectedTask?._id === task._id
-                            ? 'bg-gray-100 border-gray-800'
-                            : 'bg-white border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        <p className="font-semibold text-gray-800">{task.title}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Users size={14} className="text-gray-500" />
-                          <span className="text-xs text-gray-500">
-                            {task.applications?.length || 0} applications
-                          </span>
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500 text-sm">No tasks created yet</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="lg:col-span-2">
-                {selectedTask ? (
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">{selectedTask.title}</h2>
-                    <p className="text-gray-600 mb-6">{selectedTask.description}</p>
-
-                    {loadingApplications ? (
-                      <div className="text-center py-8">
-                        <div className="text-gray-600">Loading applications...</div>
-                      </div>
-                    ) : applications.length > 0 ? (
-                      <div className="space-y-4">
-                        <h3 className="font-bold text-gray-800 mb-4">Team Applications ({applications.length})</h3>
-                        {applications.map(app => (
-                          <div
-                            key={app._id}
-                            className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-all"
-                          >
-                            <div className="flex items-start justify-between mb-4">
-                              <div>
-                                <h3 className="font-bold text-gray-800">{app.teamName}</h3>
-                                <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                                  <span className="flex items-center gap-1">
-                                    <Users size={14} />
-                                    {app.memberCount} members
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Clock size={14} />
-                                    {new Date(app.appliedAt).toLocaleDateString()}
-                                  </span>
-                                </div>
-                              </div>
-                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                app.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {app.status?.toUpperCase()}
-                              </span>
-                            </div>
-
-                            {app.members && app.members.length > 0 && (
-                              <div className="mb-4 bg-gray-50 rounded p-3">
-                                <p className="text-sm font-semibold text-gray-800 mb-2">Team Members</p>
-                                <div className="space-y-2">
-                                  {app.members.map((member, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 text-sm">
-                                      <div className="w-8 h-8 rounded-full bg-gray-300"></div>
-                                      <div>
-                                        <p className="font-medium text-gray-800">{member.name}</p>
-                                        <p className="text-xs text-gray-500">{member.email}</p>
-                                      </div>
-                                    </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <Users size={24} />
+                Pending Applications ({pendingRequests.length})
+              </h2>
+              
+              {pendingRequests.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingRequests.map(app => (
+                    <div key={app._id} className="border border-gray-200 rounded-lg p-5 hover:bg-gray-50 transition-all bg-white">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">{app.taskId?.title}</h3>
+                          <div className="mt-2 space-y-2">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-semibold">Applicant:</span>{' '}
+                              <button 
+                                onClick={() => setCurrentPage(`/profile/${app.studentId?._id}`)}
+                                className="text-blue-600 hover:underline font-medium"
+                              >
+                                {app.studentId?.name}
+                              </button>{' '}
+                              ({app.studentId?.email})
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              <span className="font-semibold">Applying As:</span> <span className="capitalize">{app.applyAs || 'Individual'}</span>
+                            </p>
+                            {app.applyAs === 'team' && app.teamId && (
+                              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Team Members ({app.teamId.name})</p>
+                                <ul className="space-y-1">
+                                  {app.teamId.members?.map(member => (
+                                    <li key={member._id} className="text-sm text-gray-700 flex items-center gap-2">
+                                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                                      <button 
+                                        onClick={() => setCurrentPage(`/profile/${member._id}`)}
+                                        className="text-blue-600 hover:underline font-medium"
+                                      >
+                                        {member.name}
+                                      </button>
+                                      <span className="text-gray-500">({member.email})</span>
+                                    </li>
                                   ))}
-                                </div>
+                                </ul>
                               </div>
                             )}
-
+                            <p className="text-sm text-gray-600">
+                              <span className="font-semibold">GitHub Profile:</span>{' '}
+                              <a 
+                                href={app.applicantGithubUrl || app.githubUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                              >
+                                <Github size={14} />
+                                {app.applicantGithubUrl || app.githubUrl || 'Not provided'}
+                              </a>
+                            </p>
                             {app.message && (
-                              <div className="mb-4 bg-blue-50 border border-blue-200 rounded p-3">
-                                <p className="text-sm text-gray-800">
-                                  <span className="font-semibold">Message: </span>
-                                  {app.message}
-                                </p>
-                              </div>
-                            )}
-
-                            {app.status === 'pending' && (
-                              <div className="flex gap-3">
-                                <button
-                                  onClick={() => handleApproveApplication(app._id)}
-                                  className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 font-medium text-sm"
-                                >
-                                  <CheckCircle size={16} />
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => handleRejectApplication(app._id)}
-                                  className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 font-medium text-sm"
-                                >
-                                  <XCircle size={16} />
-                                  Reject
-                                </button>
+                              <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                <p className="text-xs text-gray-500 font-semibold uppercase mb-1">Student Pitch</p>
+                                <p className="text-sm text-gray-700 italic">"{app.message}"</p>
                               </div>
                             )}
                           </div>
-                        ))}
+                        </div>
+                        
+                        <div className="flex gap-3 shrink-0">
+                          <button
+                            onClick={() => handleApproveApplication(app._id)}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 font-medium text-sm"
+                          >
+                            <CheckCircle size={16} />
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectApplication(app._id)}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 font-medium text-sm"
+                          >
+                            <XCircle size={16} />
+                            Reject
+                          </button>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-center py-12">
-                        <Users size={48} className="mx-auto text-gray-300 mb-4" />
-                        <p className="text-gray-500">No applications yet</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <Eye size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500 text-lg">Select a task to view applications</p>
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                  <Users size={48} className="mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500">No pending applications right now.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -534,9 +484,36 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h3 className="font-semibold text-gray-800">{work.taskId?.title || 'Task'}</h3>
-                          <p className="text-sm text-gray-600 mt-1">Team: {work.studentId?.name || 'Student'}</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Team:{' '}
+                            <button 
+                              onClick={() => setCurrentPage(`/profile/${work.studentId?._id}`)}
+                              className="text-blue-600 hover:underline font-medium"
+                            >
+                              {work.studentId?.name || 'Student'}
+                            </button>
+                          </p>
+                          {work.applyAs === 'team' && work.teamId && (
+                            <div className="mt-3 p-3 bg-white bg-opacity-60 border border-blue-200 rounded-lg">
+                              <p className="text-xs text-blue-800 font-semibold uppercase mb-2">Team Members ({work.teamId.name})</p>
+                              <ul className="space-y-1">
+                                {work.teamId.members?.map(member => (
+                                  <li key={member._id} className="text-sm text-gray-700 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                                    <button 
+                                      onClick={() => setCurrentPage(`/profile/${member._id}`)}
+                                      className="text-blue-600 hover:underline font-medium"
+                                    >
+                                      {member.name}
+                                    </button>
+                                    <span className="text-gray-500">({member.email})</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">In Progress</span>
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium self-start shrink-0">In Progress</span>
                       </div>
 
                       {work.githubUrl && (
@@ -563,9 +540,18 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
 
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Started: {new Date(work.createdAt).toLocaleDateString()}</span>
-                        <button className="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">
-                          View Details
-                        </button>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => setActiveChatTaskId(work.taskId._id)}
+                            className="px-4 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm font-medium flex items-center gap-1"
+                          >
+                            <MessageSquare size={14} />
+                            Chat
+                          </button>
+                          <button className="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">
+                            View Details
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -855,6 +841,11 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
           </div>
         </div>
       </div>
+
+      {/* Global Task Chat Overlay */}
+      {activeChatTaskId && (
+        <TaskChat taskId={activeChatTaskId} userData={userData} />
+      )}
     </div>
   );
 }
