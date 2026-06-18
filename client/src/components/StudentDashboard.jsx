@@ -112,10 +112,10 @@ function StudentDashboard({ setCurrentPage, userData }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 dark:border-gray-300 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -125,20 +125,20 @@ function StudentDashboard({ setCurrentPage, userData }) {
 
   return (
     <>
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         
         {/* Welcome Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
             Welcome back, {userData?.name || 'Student'}!
           </h1>
-          <p className="text-gray-600 mt-2">Here's what's happening with your projects</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Here's what's happening with your projects</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 rounded">
             {error}
           </div>
         )}
@@ -146,41 +146,41 @@ function StudentDashboard({ setCurrentPage, userData }) {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           
-          <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Completed Tasks</p>
-                <p className="text-3xl font-bold text-gray-800">{dashboardData.stats.tasksCompleted}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">Completed Tasks</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{dashboardData.stats.tasksCompleted}</p>
               </div>
               <BookOpen className="text-gray-400" size={32} />
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Active Tasks</p>
-                <p className="text-3xl font-bold text-gray-800">{dashboardData.stats.tasksActive}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">Active Tasks</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{dashboardData.stats.tasksActive}</p>
               </div>
               <TrendingUp className="text-blue-400" size={32} />
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Badges Earned</p>
-                <p className="text-3xl font-bold text-gray-800">{dashboardData.stats.badgesEarned}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">Badges Earned</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{dashboardData.stats.badgesEarned}</p>
               </div>
               <Award className="text-yellow-400" size={32} />
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Team Members</p>
-                <p className="text-3xl font-bold text-gray-800">{dashboardData.stats.teamMembers || 0}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">Team Members</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{dashboardData.stats.teamMembers || 0}</p>
               </div>
               <Users className="text-gray-400" size={32} />
             </div>
@@ -191,12 +191,12 @@ function StudentDashboard({ setCurrentPage, userData }) {
           
           {/* Active Tasks Section */}
           <div className="md:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-900/30 p-6 transition-colors">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800">Active Tasks</h2>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Active Tasks</h2>
                 <button 
                   onClick={() => setCurrentPage('browse-tasks')}
-                  className="text-sm text-gray-600 hover:text-gray-800"
+                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
                 >
                   Browse All
                 </button>
@@ -207,10 +207,10 @@ function StudentDashboard({ setCurrentPage, userData }) {
                   dashboardData.activeTasks.map(submission => {
                     const progress = getStatusProgress(submission.status);
                     return (
-                      <div key={submission._id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-400 transition-colors">
+                      <div key={submission._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-gray-800">
+                            <h3 className="font-semibold text-gray-800 dark:text-gray-100">
                               {submission.taskId?.title || 'Task'}
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">
@@ -247,7 +247,7 @@ function StudentDashboard({ setCurrentPage, userData }) {
                               </span>
                             )}
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                             <div className={`${progress.color} h-2 rounded-full transition-all duration-500`} style={{ width: progress.width }}></div>
                           </div>
                         </div>
@@ -286,7 +286,7 @@ function StudentDashboard({ setCurrentPage, userData }) {
                           </button>
                           <button 
                             onClick={() => setCurrentPage(`/task/${submission.taskId._id}/details`)}
-                            className="flex-1 text-sm px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                            className="flex-1 text-sm px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                           >
                             View Details
                           </button>
@@ -294,30 +294,30 @@ function StudentDashboard({ setCurrentPage, userData }) {
 
                         {/* Expandable Submit Form */}
                         {expandedSubmitId === submission._id && submission.status === 'in-progress' && (
-                          <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                            <h4 className="font-semibold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                          <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-sm mb-3 flex items-center gap-2">
                               <Github size={16} />
                               Submit Your Work
                             </h4>
                             <div className="space-y-3">
                               <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">GitHub Repo / Collaboration Link *</label>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">GitHub Repo / Collaboration Link *</label>
                                 <input
                                   type="url"
                                   value={submitGithubUrl}
                                   onChange={(e) => setSubmitGithubUrl(e.target.value)}
                                   placeholder="https://github.com/username/repo"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800 text-sm"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800 dark:focus:border-gray-400 text-sm bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100"
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Notes (optional)</label>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Notes (optional)</label>
                                 <textarea
                                   value={submitNotes}
                                   onChange={(e) => setSubmitNotes(e.target.value)}
                                   placeholder="Any additional notes for the mentor..."
                                   rows={2}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800 text-sm"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800 dark:focus:border-gray-400 text-sm bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100"
                                 />
                               </div>
                               <button
@@ -339,7 +339,7 @@ function StudentDashboard({ setCurrentPage, userData }) {
                     <p>No active tasks</p>
                     <button 
                       onClick={() => setCurrentPage('browse-tasks')}
-                      className="mt-4 px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+                      className="mt-4 px-6 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
                     >
                       Browse Tasks
                     </button>
@@ -351,11 +351,11 @@ function StudentDashboard({ setCurrentPage, userData }) {
 
           {/* Notifications Section */}
           <div className="md:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-900/30 p-6 transition-colors">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Bell className="text-gray-600" size={20} />
-                  <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
+                  <Bell className="text-gray-600 dark:text-gray-400" size={20} />
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Notifications</h2>
                   {unreadCount > 0 && (
                     <span className="bg-red-600 text-white text-xs rounded-full px-2 py-0.5">{unreadCount}</span>
                   )}
@@ -398,13 +398,13 @@ function StudentDashboard({ setCurrentPage, userData }) {
                     };
                     
                     return (
-                      <div key={notification._id} className={`border-b border-gray-200 pb-4 last:border-b-0 ${notification.isRead ? 'opacity-60' : ''}`}>
+                      <div key={notification._id} className={`border-b border-gray-200 dark:border-gray-700 pb-4 last:border-b-0 ${notification.isRead ? 'opacity-60' : ''}`}>
                         <div className="flex items-start gap-2">
                           <span className={`px-2 py-1 text-xs font-semibold rounded ${getTypeColor(notification.type)}`}>
                             {notification.type?.replace('_', ' ').toUpperCase()}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-800 mt-2">{notification.message}</p>
+                        <p className="text-sm text-gray-800 dark:text-gray-200 mt-2">{notification.message}</p>
                         <div className="flex items-center justify-between mt-2">
                           <p className="text-xs text-gray-500">{formatDate(notification.createdAt)}</p>
                           {!notification.isRead && (
@@ -429,24 +429,24 @@ function StudentDashboard({ setCurrentPage, userData }) {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-900/30 p-6 mt-6 transition-colors">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Quick Actions</h2>
               <div className="space-y-3">
                 <button 
                   onClick={() => setCurrentPage('browse-tasks')}
-                  className="w-full px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 text-left"
+                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-left transition-colors"
                 >
                   Find New Tasks
                 </button>
                 <button 
                   onClick={() => setCurrentPage('team-management')}
-                  className="w-full px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 text-left"
+                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-left transition-colors"
                 >
                   Manage Team
                 </button>
                 <button 
                   onClick={() => setCurrentPage('student-profile')}
-                  className="w-full px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 text-left"
+                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-left transition-colors"
                 >
                   View Profile
                 </button>

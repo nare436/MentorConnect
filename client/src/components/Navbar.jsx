@@ -1,6 +1,7 @@
-import { Menu, X, User, LogOut, Bell, Users } from 'lucide-react';
+import { Menu, X, User, LogOut, Bell, Users, Sun, Moon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { logout, getNotifications } from '../utils/api';
+import { useTheme } from '../context/ThemeContext';
 
 // Navigation bar component that shows different options based on login status
 function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
@@ -8,6 +9,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { theme, toggleTheme } = useTheme();
 
   // Fetch notification count when logged in
   useEffect(() => {
@@ -47,13 +49,13 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
+    <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-900 shadow-sm dark:shadow-gray-800/30 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           
           {/* Logo / Brand Name */}
           <div 
-            className="text-xl font-bold text-gray-800 cursor-pointer"
+            className="text-xl font-bold text-gray-800 dark:text-gray-100 cursor-pointer"
             onClick={() => setCurrentPage(isLoggedIn ? (userRole === 'student' ? 'student-dashboard' : 'mentor-dashboard') : 'home')}
           >
             Obsidian Circle
@@ -68,32 +70,32 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                   <>
                     <button 
                       onClick={() => setCurrentPage('student-dashboard')}
-                      className="text-gray-600 hover:text-gray-800"
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                     >
                       Dashboard
                     </button>
                     <button 
                       onClick={() => setCurrentPage('browse-tasks')}
-                      className="text-gray-600 hover:text-gray-800"
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                     >
                       Browse Tasks
                     </button>
                     <button 
                       onClick={() => setCurrentPage('team-management')}
-                      className="text-gray-600 hover:text-gray-800"
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                     >
                       My Team
                     </button>
                     <button 
                       onClick={() => setCurrentPage('alumni-network')}
-                      className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white flex items-center gap-1 transition-colors"
                     >
                       <Users size={16} />
                       Alumni
                     </button>
                     <button 
                       onClick={() => setCurrentPage('student-profile')}
-                      className="text-gray-600 hover:text-gray-800"
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                     >
                       Profile
                     </button>
@@ -105,26 +107,26 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                   <>
                     <button 
                       onClick={() => setCurrentPage('mentor-dashboard')}
-                      className="text-gray-600 hover:text-gray-800"
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                     >
                       Dashboard
                     </button>
                     <button 
                       onClick={() => setCurrentPage('mentor-create-task')}
-                      className="text-gray-600 hover:text-gray-800"
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                     >
                       Create Task
                     </button>
                     <button 
                       onClick={() => setCurrentPage('alumni-network')}
-                      className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white flex items-center gap-1 transition-colors"
                     >
                       <Users size={16} />
                       Alumni
                     </button>
                     <button 
                       onClick={() => setCurrentPage('mentor-profile')}
-                      className="text-gray-600 hover:text-gray-800"
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                     >
                       Profile
                     </button>
@@ -134,7 +136,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                 {/* Notification Bell */}
                 <button 
                   onClick={() => setCurrentPage(userRole === 'student' ? 'student-dashboard' : 'mentor-dashboard')}
-                  className="relative text-gray-600 hover:text-gray-800"
+                  className="relative text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                   title="Notifications"
                 >
                   <Bell size={20} />
@@ -145,10 +147,20 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                   )}
                 </button>
 
+                {/* Theme Toggle */}
+                <button
+                  onClick={toggleTheme}
+                  className="relative p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300"
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  id="theme-toggle-desktop"
+                >
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+
                 {/* Logout Button */}
                 <button 
                   onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
                   disabled={isLoggingOut}
                 >
                   <LogOut size={18} />
@@ -157,16 +169,26 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
               </>
             ) : (
               <>
+                {/* Theme Toggle (not logged in) */}
+                <button
+                  onClick={toggleTheme}
+                  className="relative p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300"
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  id="theme-toggle-desktop-public"
+                >
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+
                 {/* Not logged in navigation */}
                 <button 
                   onClick={() => setCurrentPage('login')}
-                  className="text-gray-600 hover:text-gray-800"
+                  className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                 >
                   Login
                 </button>
                 <button 
                   onClick={() => setCurrentPage('signup')}
-                  className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+                  className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
                 >
                   Sign Up
                 </button>
@@ -175,23 +197,35 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
           </div>
 
           {/* Mobile Menu Button */}
-          <button 
-            className="md:hidden flex items-center gap-2"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
+          <div className="md:hidden flex items-center gap-2">
+            {/* Mobile Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              id="theme-toggle-mobile"
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
             {/* Mobile notification indicator */}
             {isLoggedIn && unreadCount > 0 && (
               <span className="bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+            <button
+              className="text-gray-700 dark:text-gray-200"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t">
+          <div className="md:hidden py-4 border-t border-gray-200 dark:border-gray-700">
             {isLoggedIn ? (
               <div className="flex flex-col gap-3">
                 {userRole === 'student' && (
@@ -201,7 +235,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                         setCurrentPage('student-dashboard');
                         setMobileMenuOpen(false);
                       }}
-                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     >
                       Dashboard
                     </button>
@@ -210,7 +244,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                         setCurrentPage('browse-tasks');
                         setMobileMenuOpen(false);
                       }}
-                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     >
                       Browse Tasks
                     </button>
@@ -219,7 +253,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                         setCurrentPage('team-management');
                         setMobileMenuOpen(false);
                       }}
-                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     >
                       My Team
                     </button>
@@ -228,7 +262,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                         setCurrentPage('alumni-network');
                         setMobileMenuOpen(false);
                       }}
-                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded flex items-center gap-2"
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center gap-2 transition-colors"
                     >
                       <Users size={16} />
                       Alumni Network
@@ -238,7 +272,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                         setCurrentPage('student-profile');
                         setMobileMenuOpen(false);
                       }}
-                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     >
                       Profile
                     </button>
@@ -252,7 +286,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                         setCurrentPage('mentor-dashboard');
                         setMobileMenuOpen(false);
                       }}
-                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     >
                       Dashboard
                     </button>
@@ -261,7 +295,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                         setCurrentPage('mentor-create-task');
                         setMobileMenuOpen(false);
                       }}
-                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     >
                       Create Task
                     </button>
@@ -270,7 +304,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                         setCurrentPage('alumni-network');
                         setMobileMenuOpen(false);
                       }}
-                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded flex items-center gap-2"
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center gap-2 transition-colors"
                     >
                       <Users size={16} />
                       Alumni Network
@@ -280,7 +314,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                         setCurrentPage('mentor-profile');
                         setMobileMenuOpen(false);
                       }}
-                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     >
                       Profile
                     </button>
@@ -292,7 +326,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                     handleLogout();
                     setMobileMenuOpen(false);
                   }}
-                  className="text-left px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 mx-4 disabled:opacity-50"
+                  className="text-left px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 mx-4 disabled:opacity-50 transition-colors"
                   disabled={isLoggingOut}
                 >
                   {isLoggingOut ? 'Logging out...' : 'Logout'}
@@ -305,7 +339,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                     setCurrentPage('login');
                     setMobileMenuOpen(false);
                   }}
-                  className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                  className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                 >
                   Login
                 </button>
@@ -314,7 +348,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                     setCurrentPage('signup');
                     setMobileMenuOpen(false);
                   }}
-                  className="text-left px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 mx-4"
+                  className="text-left px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 mx-4 transition-colors"
                 >
                   Sign Up
                 </button>

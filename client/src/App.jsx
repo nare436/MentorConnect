@@ -25,27 +25,27 @@ import AlumniNetwork from './components/AlumniNetwork';
 /* ----------------- HomePage (keeps your Tailwind & props) ----------------- */
 function HomePage({ setCurrentPage }) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200">
+    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
       {/* Hero Section */}
       <div className="max-w-6xl mx-auto px-4 py-20">
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-gray-800 mb-6">
+          <h1 className="text-5xl font-bold text-gray-800 dark:text-gray-100 mb-6">
             The Obsidian Circle
           </h1>
-          <p className="text-xl text-gray-600 mb-8">
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
             Connect with alumni mentors, work on real-world projects, and build your career
           </p>
 
           <div className="flex gap-4 justify-center">
             <button
               onClick={() => setCurrentPage('signup')}
-              className="px-8 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+              className="px-8 py-3 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
             >
               Get Started
             </button>
             <button
               onClick={() => setCurrentPage('login')}
-              className="px-8 py-3 bg-white text-gray-800 border-2 border-gray-800 rounded-lg hover:bg-gray-100"
+              className="px-8 py-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-2 border-gray-800 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               Login
             </button>
@@ -54,23 +54,23 @@ function HomePage({ setCurrentPage }) {
 
         {/* Features Section */}
         <div className="grid md:grid-cols-3 gap-8 mt-20">
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-800 mb-3">For Students</h3>
-            <p className="text-gray-600">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3">For Students</h3>
+            <p className="text-gray-600 dark:text-gray-300">
               Work on real projects, collaborate in teams, and get mentorship from industry professionals
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-800 mb-3">For Mentors</h3>
-            <p className="text-gray-600">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3">For Mentors</h3>
+            <p className="text-gray-600 dark:text-gray-300">
               Post tasks, evaluate submissions, and help students grow with your expertise
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-800 mb-3">Track Progress</h3>
-            <p className="text-gray-600">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3">Track Progress</h3>
+            <p className="text-gray-600 dark:text-gray-300">
               Monitor contributions, earn badges, and build a portfolio of completed work
             </p>
           </div>
@@ -177,10 +177,10 @@ function AppInner() {
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 dark:border-gray-300 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading...</p>
         </div>
       </div>
     );

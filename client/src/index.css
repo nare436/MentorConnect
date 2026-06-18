@@ -1,1 +1,41 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Smooth dark mode transition for the root html element */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode base styles for any pages not explicitly updated */
+html.dark {
+  background-color: #111827; /* gray-900 */
+  color-scheme: dark;
+}
+
+/* Global dark mode styles for common patterns across all components */
+html.dark body {
+  background-color: #111827;
+}
+
+/* Scrollbar dark mode */
+html.dark ::-webkit-scrollbar {
+  background-color: #1f2937;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+  border-radius: 4px;
+}
+
+/* Input placeholder colors in dark mode */
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Select option dark mode fix */
+html.dark option {
+  background-color: #374151;
+  color: #f3f4f6;
+}

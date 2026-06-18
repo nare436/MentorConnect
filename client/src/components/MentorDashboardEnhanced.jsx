@@ -188,10 +188,10 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 dark:border-gray-300 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -200,10 +200,10 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
   // ========== INDIVIDUAL TASK DETAIL VIEW ==========
   if (selectedTask) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 transition-colors duration-300">
         <div className="max-w-6xl mx-auto">
           {/* Back Button */}
-          <button onClick={closeTaskDetail} className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6">
+          <button onClick={closeTaskDetail} className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 mb-6 transition-colors">
             <ArrowLeft size={20} /> Back to Dashboard
           </button>
 
@@ -215,11 +215,11 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
           )}
 
           {/* Task Header */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-900/30 p-6 mb-6 transition-colors">
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-gray-800">{selectedTask.title}</h1>
-                <p className="text-gray-600 mt-2">{selectedTask.description}</p>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{selectedTask.title}</h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">{selectedTask.description}</p>
                 <div className="flex flex-wrap items-center gap-3 mt-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                     selectedTask.difficulty === 'Hard' ? 'bg-red-100 text-red-800'
@@ -259,33 +259,33 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
           {/* Task Stats */}
           {taskDetails && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-gray-900/30 text-center transition-colors">
                 <p className="text-2xl font-bold text-yellow-600">{taskDetails.pendingApplications?.length || 0}</p>
-                <p className="text-sm text-gray-600">Pending Requests</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Pending Requests</p>
               </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-gray-900/30 text-center transition-colors">
                 <p className="text-2xl font-bold text-blue-600">{taskDetails.inProgress?.length || 0}</p>
-                <p className="text-sm text-gray-600">In Progress</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">In Progress</p>
               </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-gray-900/30 text-center transition-colors">
                 <p className="text-2xl font-bold text-orange-600">{taskDetails.submitted?.length || 0}</p>
-                <p className="text-sm text-gray-600">Submitted</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Submitted</p>
               </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-gray-900/30 text-center transition-colors">
                 <p className="text-2xl font-bold text-green-600">{taskDetails.reviewed?.length || 0}</p>
-                <p className="text-sm text-gray-600">Reviewed</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Reviewed</p>
               </div>
             </div>
           )}
 
           {/* Sub-Tabs */}
-          <div className="flex gap-2 mb-6 border-b border-gray-200 bg-white rounded-t-lg px-4 py-3 overflow-x-auto">
+          <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-lg px-4 py-3 overflow-x-auto transition-colors">
             {['overview', 'requests', 'students', 'chat', 'notifications'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setTaskDetailTab(tab)}
                 className={`pb-2 px-4 font-medium border-b-2 transition-colors whitespace-nowrap text-sm ${
-                  taskDetailTab === tab ? 'border-gray-800 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-800'
+                  taskDetailTab === tab ? 'border-gray-800 dark:border-gray-300 text-gray-800 dark:text-gray-100' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
                 }`}
               >
                 {tab === 'overview' ? 'Overview' 
@@ -297,7 +297,7 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
             ))}
           </div>
 
-          <div className="bg-white rounded-b-lg shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow-sm dark:shadow-gray-900/30 p-6 transition-colors">
             {isLoadingDetails ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mx-auto mb-3"></div>
@@ -560,13 +560,13 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
 
   // ========== MAIN DASHBOARD VIEW ==========
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Welcome back, {userData?.name || 'Mentor'}!</h1>
-          <p className="text-gray-600 mt-2">Manage your tasks, review applications, and monitor student progress</p>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Welcome back, {userData?.name || 'Mentor'}!</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage your tasks, review applications, and monitor student progress</p>
         </div>
 
         {error && (
@@ -578,20 +578,20 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-gray-600 text-sm">My Tasks</p>
-            <p className="text-2xl font-bold text-gray-800 mt-1">{tasks.length}</p>
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">My Tasks</p>
+            <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">{tasks.length}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-gray-600 text-sm">Active Tasks</p>
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Active Tasks</p>
             <p className="text-2xl font-bold text-blue-600 mt-1">{stats.activeTasks}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-gray-600 text-sm">Total Students</p>
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Total Students</p>
             <p className="text-2xl font-bold text-green-600 mt-1">{totalStudents}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-gray-600 text-sm">Notifications</p>
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-gray-900/30 transition-colors">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Notifications</p>
             <div className="flex items-center gap-2 mt-1">
               <p className="text-2xl font-bold text-red-600">{stats.unreadNotifications}</p>
               <Bell size={20} className="text-red-600" />
@@ -600,7 +600,7 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-6 flex gap-2 border-b border-gray-200 bg-white rounded-t-lg px-6 py-4 overflow-x-auto">
+        <div className="mb-6 flex gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-lg px-6 py-4 overflow-x-auto transition-colors">
           {[
             { key: 'my-tasks', label: 'My Tasks' },
             { key: 'explore', label: 'Explore Tasks' },
@@ -614,7 +614,7 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
                 if (tab.key === 'explore' && exploreTasks.length === 0) fetchExploreTasks();
               }}
               className={`pb-2 px-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab.key ? 'border-gray-800 text-gray-800' : 'border-transparent text-gray-600 hover:text-gray-800'
+                activeTab === tab.key ? 'border-gray-800 dark:border-gray-300 text-gray-800 dark:text-gray-100' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
               }`}
             >
               {tab.label}
@@ -629,16 +629,16 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-b-lg shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow-sm dark:shadow-gray-900/30 p-6 transition-colors">
 
           {/* My Tasks Tab */}
           {activeTab === 'my-tasks' && (
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800">My Tasks</h2>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">My Tasks</h2>
                 <button
                   onClick={() => setCurrentPage('mentor-create-task')}
-                  className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 text-sm font-medium"
+                  className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 text-sm font-medium transition-colors"
                 >
                   + Create New Task
                 </button>
@@ -647,12 +647,12 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
               {tasks.length > 0 ? (
                 <div className="space-y-4">
                   {tasks.map(task => (
-                    <div key={task._id} className="border border-gray-200 rounded-lg p-5 hover:border-gray-400 hover:shadow-sm transition-all cursor-pointer"
+                    <div key={task._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-sm transition-all cursor-pointer"
                       onClick={() => openTaskDetail(task)}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3">
-                            <h3 className="font-bold text-gray-800 text-lg">{task.title}</h3>
+                            <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{task.title}</h3>
                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                               task.status === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
                             }`}>{task.status}</span>
@@ -665,7 +665,7 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
                               <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Deadline Passed</span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{task.description}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{task.description}</p>
                           <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
                             <span className="flex items-center gap-1"><Users size={14} /> {task.applicants || 0} applicants</span>
                             <span className="flex items-center gap-1"><Clock size={14} /> {task.activeTeams || 0} active</span>

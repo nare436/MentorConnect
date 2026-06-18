@@ -127,7 +127,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false })
   const chatContent = (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between bg-gray-800 text-white px-4 py-3">
+      <div className="flex items-center justify-between bg-gray-800 dark:bg-gray-900 text-white px-4 py-3">
         <div className="flex items-center gap-2">
           <MessageCircle size={20} />
           <span className="font-semibold">Team Chat</span>
@@ -155,7 +155,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false })
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50 dark:bg-gray-800">
         {isLoading ? (
           <div className="text-center text-gray-500 py-8">
             <MessageCircle className="mx-auto mb-2 animate-pulse" size={32} />
@@ -182,8 +182,8 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false })
                   <div
                     className={`max-w-xs px-4 py-2 rounded-lg ${
                       isOwnMessage
-                        ? 'bg-gray-800 text-white'
-                        : 'bg-white text-gray-800 border border-gray-200'
+                        ? 'bg-gray-800 dark:bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-600'
                     }`}
                   >
                     <p className="text-xs font-semibold mb-1 opacity-75 flex items-center gap-1">
@@ -204,7 +204,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false })
             {/* Typing Indicator */}
             {typingUsers.length > 0 && (
               <div className="flex justify-start">
-                <div className="bg-gray-200 px-4 py-2 rounded-lg text-xs text-gray-600 italic">
+                <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-300 italic">
                   {typingUsers.map(u => u.userName).join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
                 </div>
               </div>
@@ -216,7 +216,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false })
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSendMessage} className="flex gap-2 px-4 py-3 border-t border-gray-200 bg-white">
+      <form onSubmit={handleSendMessage} className="flex gap-2 px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <input
           type="text"
           value={newMessage}
@@ -228,7 +228,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false })
             if (socket) socket.emit('team-user-stopped-typing', userData.id);
           }}
           placeholder="Type a message..."
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800 text-sm"
+          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800 dark:focus:border-gray-400 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
           disabled={!isConnected}
         />
         <button
@@ -245,7 +245,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false })
   // Inline mode: renders as embedded panel filling its container
   if (inline) {
     return (
-      <div className="flex flex-col h-full overflow-hidden rounded-lg border border-gray-200">
+      <div className="flex flex-col h-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
         {chatContent}
       </div>
     );
@@ -253,7 +253,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false })
 
   // Floating mode (default): fixed bottom-right popup
   return (
-    <div className="fixed bottom-4 right-4 w-96 h-96 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden z-40">
+    <div className="fixed bottom-4 right-4 w-96 h-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl dark:shadow-gray-900/50 flex flex-col overflow-hidden z-40">
       {chatContent}
     </div>
   );
