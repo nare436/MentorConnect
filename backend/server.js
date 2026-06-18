@@ -21,6 +21,7 @@ const videoChatModel = require('./models/videoChat');
 const notificationModel = require('./models/notification');
 const badgeModel = require('./models/badge');
 const teamChatModel = require('./models/teamChat');
+const alumniMessageModel = require('./models/alumniMessage');
 
 const app = express();
 const server = http.createServer(app);
@@ -446,26 +447,62 @@ app.get('/student/dashboard', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Students only.' });
     }
     
-    // Get user's active tasks
-    const submissions = await submissionModel
+    // Get user's direct submissions
+    const directSubmissions = await submissionModel
       .find({ studentId: req.user.id })
-      .populate('taskId')
+      .populate({
+        path: 'taskId',
+        populate: { path: 'mentorId', select: 'name company' }
+      })
       .populate('teamId');
     
+    // Also get submissions where user is a team member (but not the original applicant)
+    const userTeam = await teamModel.findOne({ members: req.user.id });
+    let teamSubmissions = [];
+    if (userTeam) {
+      teamSubmissions = await submissionModel
+        .find({ teamId: userTeam._id, studentId: { $ne: req.user.id } })
+        .populate({
+          path: 'taskId',
+          populate: { path: 'mentorId', select: 'name company' }
+        })
+        .populate('teamId');
+    }
+    
+    // Merge and deduplicate by taskId
+    const seenTasks = new Set();
+    const allSubmissions = [];
+    for (const sub of directSubmissions) {
+      const tid = sub.taskId?._id?.toString();
+      if (tid && !seenTasks.has(tid)) {
+        seenTasks.add(tid);
+        allSubmissions.push(sub);
+      }
+    }
+    for (const sub of teamSubmissions) {
+      const tid = sub.taskId?._id?.toString();
+      if (tid && !seenTasks.has(tid)) {
+        seenTasks.add(tid);
+        allSubmissions.push({ ...sub.toObject(), isTeamTask: true });
+      }
+    }
+    
     // Calculate stats
-    const completedTasks = submissions.filter(s => s.status === 'reviewed').length;
-    const activeTasks = submissions.filter(s => s.status === 'pending' || s.status === 'submitted').length;
+    const completedTasks = allSubmissions.filter(s => s.status === 'reviewed').length;
+    const activeTasks = allSubmissions.filter(s => ['in-progress', 'submitted', 'pending_approval'].includes(s.status)).length;
     
     res.json({
       success: true,
       stats: {
         tasksCompleted: completedTasks,
         tasksActive: activeTasks,
-        badgesEarned: 3
+        badgesEarned: 3,
+        teamMembers: userTeam?.members?.length || 0
       },
-      activeTasks: submissions
+      activeTasks: allSubmissions
     });
   } catch (err) {
+    console.error('Dashboard error:', err);
     res.status(500).json({ error: 'Failed to fetch dashboard' });
   }
 });
@@ -524,6 +561,16 @@ app.post('/tasks/:id/apply', isLoggedIn, async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
     
+    // Check if task is accepting applications
+    if (task.acceptingApplications === false) {
+      return res.status(400).json({ error: 'This task is no longer accepting applications' });
+    }
+    
+    // Check if deadline has passed
+    if (task.deadline && new Date(task.deadline) < new Date()) {
+      return res.status(400).json({ error: 'The application deadline for this task has passed' });
+    }
+    
     // Check if already applied
     const existingSubmission = await submissionModel.findOne({
       taskId,
@@ -534,13 +581,52 @@ app.post('/tasks/:id/apply', isLoggedIn, async (req, res) => {
       return res.status(400).json({ error: 'You have already applied to this task' });
     }
     
-    // Create submission with applicantGithubUrl and pending_approval status
+    // If applying as a team, create submissions for ALL team members
+    if (applyAs === 'team' && teamId) {
+      const team = await teamModel.findById(teamId).populate('members', '_id name');
+      if (!team) {
+        return res.status(400).json({ error: 'Team not found' });
+      }
+      
+      // Check if any team member already applied
+      const memberIds = team.members.map(m => m._id);
+      const existingTeamSubmissions = await submissionModel.find({
+        taskId,
+        studentId: { $in: memberIds }
+      });
+      if (existingTeamSubmissions.length > 0) {
+        return res.status(400).json({ error: 'A team member has already applied to this task' });
+      }
+      
+      // Create submission for each team member
+      const submissions = [];
+      for (const member of team.members) {
+        const sub = await submissionModel.create({
+          taskId,
+          studentId: member._id,
+          teamId: team._id,
+          applicantGithubUrl: githubUrl,
+          applyAs: 'team',
+          status: 'pending_approval'
+        });
+        submissions.push(sub);
+      }
+      
+      // Update task applicants count
+      await taskModel.findByIdAndUpdate(taskId, {
+        $inc: { applicants: 1 }
+      });
+      
+      return res.json({ success: true, message: `Application submitted for team "${team.name}" (${team.members.length} members)`, submission: submissions[0] });
+    }
+    
+    // Individual application
     const submission = await submissionModel.create({
       taskId,
       studentId: req.user.id,
-      teamId: applyAs === 'team' ? teamId : null,
+      teamId: null,
       applicantGithubUrl: githubUrl,
-      applyAs: applyAs || 'individual',
+      applyAs: 'individual',
       status: 'pending_approval'
     });
     
@@ -963,7 +1049,7 @@ app.post('/mentor/profile/update', isLoggedIn, async (req, res) => {
   }
 });
 
-// Create task (mentor only)
+// Create task (mentor only) — deadline must be today or in the future
 app.post('/mentor/task/create', isLoggedIn, async (req, res) => {
   try {
     if (req.user.role !== 'mentor') {
@@ -972,6 +1058,17 @@ app.post('/mentor/task/create', isLoggedIn, async (req, res) => {
     
     const { title, description, deadline, difficulty, tags, rubric } = req.body;
     
+    // Validate deadline is not in the past
+    const deadlineDate = new Date(deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (deadlineDate < today) {
+      return res.status(400).json({ error: 'Deadline must be today or a future date' });
+    }
+    
+    // Calculate totalPoints from rubric
+    const totalPoints = (rubric || []).reduce((sum, item) => sum + (parseInt(item.points) || 0), 0);
+    
     const task = await taskModel.create({
       title,
       description,
@@ -979,8 +1076,10 @@ app.post('/mentor/task/create', isLoggedIn, async (req, res) => {
       difficulty,
       tags,
       rubric,
+      totalPoints: totalPoints || 100,
       mentorId: req.user.id,
-      status: 'active'
+      status: 'active',
+      acceptingApplications: true
     });
     
     res.json({ success: true, message: 'Task created', task });
@@ -996,7 +1095,85 @@ app.get('/mentor/tasks', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Mentors only.' });
     }
     
-    const tasks = await taskModel.find({ mentorId: req.user.id });
+    const tasks = await taskModel.find({ mentorId: req.user.id }).sort({ createdAt: -1 });
+    res.json({ success: true, tasks });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
+
+// Get detailed info for a single mentor task (applications, students, submissions)
+app.get('/mentor/task/:taskId/details', isLoggedIn, async (req, res) => {
+  try {
+    if (req.user.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const task = await taskModel.findById(req.params.taskId).populate('mentorId', 'name email');
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    
+    // Get all submissions for this task
+    const submissions = await submissionModel
+      .find({ taskId: task._id })
+      .populate('studentId', 'name email skills education githubUrl totalPoints')
+      .populate({
+        path: 'teamId',
+        select: 'name members',
+        populate: { path: 'members', select: 'name email' }
+      })
+      .sort({ createdAt: -1 });
+    
+    // Group by status
+    const pendingApplications = submissions.filter(s => s.status === 'pending_approval');
+    const inProgress = submissions.filter(s => s.status === 'in-progress');
+    const submitted = submissions.filter(s => s.status === 'submitted');
+    const reviewed = submissions.filter(s => s.status === 'reviewed');
+    
+    res.json({
+      success: true,
+      task,
+      pendingApplications,
+      inProgress,
+      submitted,
+      reviewed,
+      totalStudents: submissions.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch task details' });
+  }
+});
+
+// Toggle applications open/close for a task
+app.post('/mentor/task/:taskId/toggle-applications', isLoggedIn, async (req, res) => {
+  try {
+    if (req.user.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const task = await taskModel.findOne({ _id: req.params.taskId, mentorId: req.user.id });
+    if (!task) return res.status(404).json({ error: 'Task not found or not yours' });
+    
+    task.acceptingApplications = !task.acceptingApplications;
+    await task.save();
+    
+    res.json({
+      success: true,
+      acceptingApplications: task.acceptingApplications,
+      message: task.acceptingApplications ? 'Applications are now open' : 'Applications are now closed'
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to toggle applications' });
+  }
+});
+
+// Explore tasks from all mentors (read-only browse)
+app.get('/tasks/explore', isLoggedIn, async (req, res) => {
+  try {
+    const tasks = await taskModel
+      .find({ status: 'active' })
+      .populate('mentorId', 'name email company expertise')
+      .sort({ createdAt: -1 });
+    
     res.json({ success: true, tasks });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch tasks' });
@@ -1079,8 +1256,21 @@ app.post('/mentor/applications/:id/approve', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized to approve this application' });
     }
     
-    submission.status = 'in-progress';
-    await submission.save();
+    // If team application, approve all team members' submissions
+    if (submission.applyAs === 'team' && submission.teamId) {
+      await submissionModel.updateMany(
+        { taskId: submission.taskId._id, teamId: submission.teamId },
+        { $set: { status: 'in-progress' } }
+      );
+    } else {
+      submission.status = 'in-progress';
+      await submission.save();
+    }
+    
+    // Update active teams count
+    await taskModel.findByIdAndUpdate(submission.taskId._id, {
+      $inc: { activeTeams: 1 }
+    });
     
     res.json({ success: true, message: 'Application approved successfully', submission });
   } catch (err) {
@@ -1148,6 +1338,20 @@ app.post('/notifications/:id/read', isLoggedIn, async (req, res) => {
   }
 });
 
+// Mark all notifications as read
+app.post('/notifications/mark-all-read', isLoggedIn, async (req, res) => {
+  try {
+    await notificationModel.updateMany(
+      { userId: req.user.id, isRead: false },
+      { isRead: true, readAt: new Date() }
+    );
+    
+    res.json({ success: true, message: 'All notifications marked as read' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to mark notifications' });
+  }
+});
+
 // ========== BADGES APIs ==========
 
 // Get user badges
@@ -1187,6 +1391,133 @@ app.get('/team/:id/chat-history', isLoggedIn, async (req, res) => {
 });
 
 // ========== MENTOR ENHANCED APIs ==========
+
+// Get all students working on mentor's tasks
+app.get('/mentor/students', isLoggedIn, async (req, res) => {
+  try {
+    if (req.user.role !== 'mentor') {
+      return res.status(403).json({ error: 'Access denied. Mentors only.' });
+    }
+
+    const tasks = await taskModel.find({ mentorId: req.user.id });
+    const taskIds = tasks.map(t => t._id);
+
+    const submissions = await submissionModel
+      .find({ 
+        taskId: { $in: taskIds }, 
+        status: { $in: ['in-progress', 'submitted', 'reviewed'] }
+      })
+      .populate('studentId', 'name email education skills githubUrl totalPoints')
+      .populate('taskId', 'title difficulty totalPoints')
+      .populate({
+        path: 'teamId',
+        select: 'name members',
+        populate: { path: 'members', select: 'name email' }
+      });
+
+    // Group by task
+    const taskStudentMap = {};
+    for (const sub of submissions) {
+      const taskKey = sub.taskId?._id?.toString();
+      if (!taskKey) continue;
+      if (!taskStudentMap[taskKey]) {
+        taskStudentMap[taskKey] = {
+          task: sub.taskId,
+          students: []
+        };
+      }
+      taskStudentMap[taskKey].students.push({
+        student: sub.studentId,
+        status: sub.status,
+        appliedAt: sub.appliedAt,
+        submittedAt: sub.submittedAt,
+        totalScore: sub.totalScore,
+        team: sub.teamId,
+        applyAs: sub.applyAs
+      });
+    }
+
+    const taskStudents = Object.values(taskStudentMap);
+    const totalStudents = new Set(submissions.map(s => s.studentId?._id?.toString())).size;
+
+    res.json({ success: true, taskStudents, totalStudents });
+  } catch (err) {
+    console.error('Get mentor students error:', err);
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// ========== LEADERBOARD ==========
+
+// Get student leaderboard
+app.get('/leaderboard', isLoggedIn, async (req, res) => {
+  try {
+    const students = await userModel
+      .find({ role: 'student', totalPoints: { $gt: 0 } })
+      .select('name email education skills totalPoints')
+      .sort({ totalPoints: -1 })
+      .limit(50);
+
+    // Add rank and tasks completed count
+    const leaderboard = [];
+    for (let i = 0; i < students.length; i++) {
+      const tasksCompleted = await submissionModel.countDocuments({ 
+        studentId: students[i]._id, 
+        status: 'reviewed' 
+      });
+      leaderboard.push({
+        ...students[i].toObject(),
+        rank: i + 1,
+        tasksCompleted
+      });
+    }
+
+    res.json({ success: true, leaderboard });
+  } catch (err) {
+    console.error('Leaderboard error:', err);
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
+// Get student points breakdown
+app.get('/student/points-breakdown', isLoggedIn, async (req, res) => {
+  try {
+    if (req.user.role !== 'student') {
+      return res.status(403).json({ error: 'Access denied. Students only.' });
+    }
+
+    const reviewed = await submissionModel
+      .find({ studentId: req.user.id, status: 'reviewed' })
+      .populate('taskId', 'title difficulty totalPoints')
+      .sort({ reviewedAt: -1 });
+
+    const breakdown = reviewed.map(s => ({
+      taskTitle: s.taskId?.title || 'Unknown Task',
+      difficulty: s.taskId?.difficulty || 'Medium',
+      maxPoints: s.taskId?.totalPoints || 100,
+      earnedPoints: s.totalScore || 0,
+      reviewedAt: s.reviewedAt,
+      feedback: s.feedback
+    }));
+
+    // Get rank
+    const user = await userModel.findById(req.user.id).select('totalPoints');
+    const rank = await userModel.countDocuments({ 
+      role: 'student', 
+      totalPoints: { $gt: user.totalPoints } 
+    }) + 1;
+
+    res.json({ 
+      success: true, 
+      breakdown, 
+      totalPoints: user.totalPoints, 
+      rank 
+    });
+  } catch (err) {
+    console.error('Points breakdown error:', err);
+    res.status(500).json({ error: 'Failed to fetch points breakdown' });
+  }
+});
 
 
 
@@ -1240,12 +1571,35 @@ app.post('/mentor/evaluate/:submissionId', isLoggedIn, async (req, res) => {
     submission.reviewedAt = new Date();
     await submission.save();
     
+    // Add points to student's totalPoints
+    if (totalScore > 0) {
+      await userModel.findByIdAndUpdate(submission.studentId, {
+        $inc: { totalPoints: totalScore }
+      });
+      
+      // Recalculate ranks for all students
+      const rankedStudents = await userModel
+        .find({ role: 'student' })
+        .sort({ totalPoints: -1 })
+        .select('_id');
+      
+      const bulkOps = rankedStudents.map((student, index) => ({
+        updateOne: {
+          filter: { _id: student._id },
+          update: { rank: index + 1 }
+        }
+      }));
+      if (bulkOps.length > 0) {
+        await userModel.bulkWrite(bulkOps);
+      }
+    }
+    
     // Notify the student
     await notificationModel.create({
       userId: submission.studentId,
       type: 'submission_reviewed',
       title: 'Your submission has been reviewed',
-      message: `Your submission for "${submission.taskId.title}" has been evaluated. Score: ${totalScore || 0}`,
+      message: `Your submission for "${submission.taskId.title}" has been evaluated. Score: ${totalScore || 0}. Points added to your profile!`,
       relatedTaskId: submission.taskId._id,
       relatedUserId: req.user.id,
       isRead: false
@@ -1382,6 +1736,171 @@ app.get('/profile/:id', isLoggedIn, async (req, res) => {
     res.json({ success: true, user, stats });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch public profile' });
+  }
+});
+// ========== ALUMNI NETWORK APIs ==========
+
+// Get alumni directory (all mentors)
+app.get('/alumni/directory', isLoggedIn, async (req, res) => {
+  try {
+    const { q } = req.query;
+    let filter = { role: 'mentor' };
+    
+    if (q && q.trim()) {
+      const searchRegex = new RegExp(q.trim(), 'i');
+      filter = {
+        role: 'mentor',
+        $or: [
+          { name: searchRegex },
+          { company: searchRegex },
+          { expertise: { $elemMatch: searchRegex } },
+          { bio: searchRegex },
+          { jobRole: searchRegex }
+        ]
+      };
+    }
+    
+    const alumni = await userModel
+      .find(filter)
+      .select('name email company jobRole expertise bio yearsOfExperience linkedinUrl githubUrl createdAt')
+      .sort({ name: 1 });
+    
+    // Get task counts for each mentor
+    const alumniWithStats = await Promise.all(alumni.map(async (mentor) => {
+      const taskCount = await taskModel.countDocuments({ mentorId: mentor._id });
+      const taskIds = (await taskModel.find({ mentorId: mentor._id }).select('_id')).map(t => t._id);
+      const studentsHelped = await submissionModel.countDocuments({
+        taskId: { $in: taskIds },
+        status: { $in: ['in-progress', 'reviewed'] }
+      });
+      return {
+        ...mentor.toObject(),
+        taskCount,
+        studentsHelped
+      };
+    }));
+    
+    res.json({ success: true, alumni: alumniWithStats });
+  } catch (err) {
+    console.error('Alumni directory error:', err);
+    res.status(500).json({ error: 'Failed to fetch alumni directory' });
+  }
+});
+
+// Send a direct message to another user
+app.post('/alumni/message', isLoggedIn, async (req, res) => {
+  try {
+    const { receiverId, message } = req.body;
+    
+    if (!receiverId || !message || !message.trim()) {
+      return res.status(400).json({ error: 'Receiver and message are required' });
+    }
+    
+    const receiver = await userModel.findById(receiverId);
+    if (!receiver) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const savedMessage = await alumniMessageModel.create({
+      senderId: req.user.id,
+      receiverId,
+      message: message.trim()
+    });
+    
+    // Send real-time notification
+    const sender = await userModel.findById(req.user.id).select('name');
+    io.to(`user-${receiverId}`).emit('new-direct-message', {
+      _id: savedMessage._id,
+      senderId: req.user.id,
+      senderName: sender.name,
+      message: message.trim(),
+      createdAt: savedMessage.createdAt
+    });
+    
+    res.json({ success: true, message: 'Message sent', data: savedMessage });
+  } catch (err) {
+    console.error('Send alumni message error:', err);
+    res.status(500).json({ error: 'Failed to send message' });
+  }
+});
+
+// Get messages with a specific user
+app.get('/alumni/messages/:userId', isLoggedIn, async (req, res) => {
+  try {
+    const otherUserId = req.params.userId;
+    
+    const messages = await alumniMessageModel
+      .find({
+        $or: [
+          { senderId: req.user.id, receiverId: otherUserId },
+          { senderId: otherUserId, receiverId: req.user.id }
+        ]
+      })
+      .sort({ createdAt: 1 })
+      .limit(100);
+    
+    // Mark received messages as read
+    await alumniMessageModel.updateMany(
+      { senderId: otherUserId, receiverId: req.user.id, isRead: false },
+      { isRead: true }
+    );
+    
+    res.json({ success: true, messages });
+  } catch (err) {
+    console.error('Get alumni messages error:', err);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// Get list of conversations (users you've messaged with)
+app.get('/alumni/conversations', isLoggedIn, async (req, res) => {
+  try {
+    const sent = await alumniMessageModel.distinct('receiverId', { senderId: req.user.id });
+    const received = await alumniMessageModel.distinct('senderId', { receiverId: req.user.id });
+    
+    const uniqueUserIds = [...new Set([...sent.map(String), ...received.map(String)])];
+    
+    const users = await userModel
+      .find({ _id: { $in: uniqueUserIds } })
+      .select('name email company jobRole role');
+    
+    const conversations = await Promise.all(users.map(async (user) => {
+      const lastMessage = await alumniMessageModel
+        .findOne({
+          $or: [
+            { senderId: req.user.id, receiverId: user._id },
+            { senderId: user._id, receiverId: req.user.id }
+          ]
+        })
+        .sort({ createdAt: -1 });
+      
+      const unreadCount = await alumniMessageModel.countDocuments({
+        senderId: user._id,
+        receiverId: req.user.id,
+        isRead: false
+      });
+      
+      return {
+        user: user.toObject(),
+        lastMessage: lastMessage ? {
+          message: lastMessage.message,
+          createdAt: lastMessage.createdAt,
+          isMine: lastMessage.senderId.toString() === req.user.id
+        } : null,
+        unreadCount
+      };
+    }));
+    
+    conversations.sort((a, b) => {
+      const aTime = a.lastMessage?.createdAt || 0;
+      const bTime = b.lastMessage?.createdAt || 0;
+      return new Date(bTime) - new Date(aTime);
+    });
+    
+    res.json({ success: true, conversations });
+  } catch (err) {
+    console.error('Get conversations error:', err);
+    res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 });
 

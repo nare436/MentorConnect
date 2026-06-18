@@ -1,12 +1,35 @@
-import { Menu, X, User, LogOut } from 'lucide-react';
-import { useState } from 'react';
-import { logout } from '../utils/api';
+import { Menu, X, User, LogOut, Bell, Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { logout, getNotifications } from '../utils/api';
 
 // Navigation bar component that shows different options based on login status
 function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
   // State to handle mobile menu toggle
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch notification count when logged in
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchNotificationCount();
+      // Poll every 30 seconds
+      const interval = setInterval(fetchNotificationCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn]);
+
+  const fetchNotificationCount = async () => {
+    try {
+      const response = await getNotifications();
+      if (response.success) {
+        const unread = (response.notifications || []).filter(n => !n.isRead).length;
+        setUnreadCount(unread);
+      }
+    } catch (err) {
+      // Silently fail
+    }
+  };
 
   // Handle logout with API call
   const handleLogout = async () => {
@@ -62,6 +85,13 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                       My Team
                     </button>
                     <button 
+                      onClick={() => setCurrentPage('alumni-network')}
+                      className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                    >
+                      <Users size={16} />
+                      Alumni
+                    </button>
+                    <button 
                       onClick={() => setCurrentPage('student-profile')}
                       className="text-gray-600 hover:text-gray-800"
                     >
@@ -86,6 +116,13 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                       Create Task
                     </button>
                     <button 
+                      onClick={() => setCurrentPage('alumni-network')}
+                      className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                    >
+                      <Users size={16} />
+                      Alumni
+                    </button>
+                    <button 
                       onClick={() => setCurrentPage('mentor-profile')}
                       className="text-gray-600 hover:text-gray-800"
                     >
@@ -93,6 +130,20 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                     </button>
                   </>
                 )}
+
+                {/* Notification Bell */}
+                <button 
+                  onClick={() => setCurrentPage(userRole === 'student' ? 'student-dashboard' : 'mentor-dashboard')}
+                  className="relative text-gray-600 hover:text-gray-800"
+                  title="Notifications"
+                >
+                  <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
 
                 {/* Logout Button */}
                 <button 
@@ -125,9 +176,15 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
 
           {/* Mobile Menu Button */}
           <button 
-            className="md:hidden"
+            className="md:hidden flex items-center gap-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
+            {/* Mobile notification indicator */}
+            {isLoggedIn && unreadCount > 0 && (
+              <span className="bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
@@ -168,6 +225,16 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                     </button>
                     <button 
                       onClick={() => {
+                        setCurrentPage('alumni-network');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded flex items-center gap-2"
+                    >
+                      <Users size={16} />
+                      Alumni Network
+                    </button>
+                    <button 
+                      onClick={() => {
                         setCurrentPage('student-profile');
                         setMobileMenuOpen(false);
                       }}
@@ -197,6 +264,16 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                       className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
                     >
                       Create Task
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setCurrentPage('alumni-network');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded flex items-center gap-2"
+                    >
+                      <Users size={16} />
+                      Alumni Network
                     </button>
                     <button 
                       onClick={() => {

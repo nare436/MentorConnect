@@ -66,6 +66,15 @@ function MentorTaskCreate({ setCurrentPage }) {
       return;
     }
 
+    // Validate deadline is today or in the future
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadlineDate = new Date(taskData.deadline);
+    if (deadlineDate < today) {
+      setError('Deadline must be today or a future date. Please select a valid date.');
+      return;
+    }
+
     if (taskData.rubricItems.some(item => !item.criteria.trim())) {
       setError('Please fill in all rubric criteria');
       return;
@@ -145,6 +154,7 @@ function MentorTaskCreate({ setCurrentPage }) {
                 name="deadline"
                 value={taskData.deadline}
                 onChange={handleChange}
+                min={new Date().toISOString().split('T')[0]}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
                 required
                 disabled={isLoading}

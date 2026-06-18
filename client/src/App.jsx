@@ -20,6 +20,7 @@ import MentorEvaluation from './components/MentorEvaluation';
 import TaskChat from './components/TaskChat';
 import TaskDetail from './components/TaskDetail';
 import PublicProfile from './components/PublicProfile';
+import AlumniNetwork from './components/AlumniNetwork';
 
 /* ----------------- HomePage (keeps your Tailwind & props) ----------------- */
 function HomePage({ setCurrentPage }) {
@@ -130,6 +131,7 @@ function AppInner() {
       case 'task-submission': return '/task-submission';
       case 'mentor-create-task': return '/mentor/task/create';
       case 'mentor-evaluation': return '/mentor/evaluation';
+      case 'alumni-network': return '/alumni';
       default: return '/';
     }
   };
@@ -259,9 +261,10 @@ function AppInner() {
           <Route path="/profile/:id" element={isLoggedIn ? <PublicProfile /> : <Navigate to="/login" />} />
 
           {/* Team management, Mentor create/eval routes — add or adjust as needed */}
-          <Route path="/team-management" element={<TeamManagement setCurrentPage={setCurrentPage} />} />
+          <Route path="/team-management" element={<TeamManagement setCurrentPage={setCurrentPage} userData={userData} />} />
           <Route path="/mentor/task/create" element={<MentorTaskCreate setCurrentPage={setCurrentPage} />} />
           <Route path="/mentor/evaluation" element={<MentorEvaluation setCurrentPage={setCurrentPage} />} />
+          <Route path="/alumni" element={isLoggedIn ? <AlumniNetwork setCurrentPage={setCurrentPage} userData={userData} /> : <Navigate to="/login" />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" />} />

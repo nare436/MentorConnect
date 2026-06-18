@@ -82,6 +82,16 @@ const userSchema = mongoose.Schema({
     default: ''
   },
   
+  // Points & Ranking (for students)
+  totalPoints: {
+    type: Number,
+    default: 0
+  },
+  rank: {
+    type: Number,
+    default: 0
+  },
+  
   // Timestamps
   createdAt: {
     type: Date,

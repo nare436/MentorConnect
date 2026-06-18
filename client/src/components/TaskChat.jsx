@@ -3,12 +3,12 @@ import { Send, MessageCircle, X, MessageSquare } from 'lucide-react';
 import io from 'socket.io-client';
 import { getChatHistory } from '../utils/api';
 
-function TaskChat({ taskId, userData }) {
+function TaskChat({ taskId, userData, inline = false, onClose }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [isOpen, setIsOpen] = useState(false); // Chat open/close state
+  const [isOpen, setIsOpen] = useState(inline); // Auto-open in inline mode
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef(null);
 
@@ -78,6 +78,98 @@ function TaskChat({ taskId, userData }) {
     setNewMessage('');
   };
 
+  const handleClose = () => {
+    setIsOpen(false);
+    if (onClose) onClose();
+  };
+
+  // Inline mode: renders as embedded panel
+  if (inline) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 h-96 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between bg-gray-800 text-white px-4 py-2">
+          <div className="flex items-center gap-2">
+            <MessageCircle size={18} />
+            <span className="font-semibold">Task Chat</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-xs text-gray-300">{isConnected ? 'Connected' : 'Disconnected'}</span>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50">
+          {isLoading ? (
+            <div className="text-center text-gray-500 py-8">
+              <MessageCircle className="mx-auto mb-2" size={32} />
+              <p className="text-sm">Loading messages...</p>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              <MessageCircle className="mx-auto mb-2" size={32} />
+              <p className="text-sm">No messages yet. Start the conversation!</p>
+            </div>
+          ) : (
+            messages.map((msg) => {
+              const senderId = msg.senderId?._id || msg.userId;
+              const isOwnMessage = senderId === userData?.id;
+              const senderName = msg.senderName || msg.userName || 'Unknown';
+              const senderRole = msg.senderRole || 'student';
+              const timestamp = msg.createdAt || msg.timestamp;
+              
+              return (
+                <div
+                  key={msg._id || `${msg.userId}-${msg.timestamp}`}
+                  className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-xs px-4 py-2 rounded-lg ${
+                      isOwnMessage ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                      {isOwnMessage ? 'You' : senderName}
+                      {senderRole === 'mentor' && (
+                        <span className={`text-xs px-1 py-0.5 rounded ${isOwnMessage ? 'bg-blue-600' : 'bg-blue-100 text-blue-800'}`}>Mentor</span>
+                      )}
+                    </p>
+                    <p className="text-sm">{msg.message}</p>
+                    <p className="text-xs mt-1 opacity-70">
+                      {new Date(timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <form onSubmit={handleSendMessage} className="flex px-4 py-2 gap-2 border-t border-gray-200">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+            disabled={!isConnected}
+          />
+          <button
+            type="submit"
+            className="px-3 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!isConnected || !newMessage.trim()}
+          >
+            <Send size={18} />
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // Floating mode (default)
   return (
     <div className="fixed bottom-4 right-4 w-80 z-50 flex flex-col items-end">
       
@@ -104,7 +196,7 @@ function TaskChat({ taskId, userData }) {
             </div>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <button onClick={() => setIsOpen(false)}>
+              <button onClick={handleClose}>
                 <X size={18} />
               </button>
             </div>

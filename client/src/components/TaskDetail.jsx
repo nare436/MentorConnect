@@ -4,7 +4,6 @@ import {
   ArrowLeft, 
   Github, 
   MessageSquare, 
-  Video, 
   CheckCircle, 
   User,
   Clock,
@@ -13,7 +12,7 @@ import {
   Share2,
   Zap
 } from 'lucide-react';
-import { getTaskById, contactMentor, requestVideoChat, completeTask } from '../utils/api';
+import { getTaskById, contactMentor, completeTask } from '../utils/api';
 import TaskChat from './TaskChat';
 import TeamChat from './TeamChat';
 
@@ -23,14 +22,12 @@ function TaskDetail({ setCurrentPage, userData }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState('overview'); // overview, chat, collaboration, team-chat, video
+  const [activeTab, setActiveTab] = useState('overview');
   const [showMentorContact, setShowMentorContact] = useState(false);
-  const [showVideoRequest, setShowVideoRequest] = useState(false);
   const [showCompletionForm, setShowCompletionForm] = useState(false);
   
   // Form states
   const [contactMessage, setContactMessage] = useState('');
-  const [videoReason, setVideoReason] = useState('');
   const [completionNotes, setCompletionNotes] = useState('');
   const [repoName, setRepoName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,30 +74,6 @@ function TaskDetail({ setCurrentPage, userData }) {
     }
   };
 
-  const handleVideoRequest = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError('');
-
-    try {
-      const response = await requestVideoChat(taskId, {
-        reason: videoReason,
-        mentorId: task.mentorId?._id || task.mentorId
-      });
-      
-      if (response.success) {
-        setSuccess('Video chat request sent! Mentor will respond shortly.');
-        setVideoReason('');
-        setShowVideoRequest(false);
-        setTimeout(() => setSuccess(''), 3000);
-      }
-    } catch (err) {
-      setError(err.message || 'Failed to request video chat');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleTaskCompletion = async (e) => {
     e.preventDefault();
     
@@ -123,7 +96,6 @@ function TaskDetail({ setCurrentPage, userData }) {
         setCompletionNotes('');
         setRepoName('');
         setShowCompletionForm(false);
-        // Refresh task data
         fetchTask();
         setTimeout(() => setSuccess(''), 3000);
       }
@@ -141,7 +113,6 @@ function TaskDetail({ setCurrentPage, userData }) {
     }
     
     try {
-      // In a real app, this would initialize GitHub OAuth flow
       const githubAuthUrl = `https://github.com/new?name=${encodeURIComponent(repoName)}&description=${encodeURIComponent(task.title)}`;
       window.open(githubAuthUrl, '_blank');
       setSuccess('Opened GitHub. Create a new repository and come back to share the link!');
@@ -153,7 +124,10 @@ function TaskDetail({ setCurrentPage, userData }) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading task details...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading task details...</p>
+        </div>
       </div>
     );
   }
@@ -163,7 +137,7 @@ function TaskDetail({ setCurrentPage, userData }) {
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <button 
-            onClick={() => setCurrentPage('/student/dashboard')}
+            onClick={() => setCurrentPage(userData?.role === 'mentor' ? '/mentor/dashboard' : '/student/dashboard')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
           >
             <ArrowLeft size={20} />
@@ -182,7 +156,7 @@ function TaskDetail({ setCurrentPage, userData }) {
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <button 
-          onClick={() => setCurrentPage('/student/dashboard')}
+          onClick={() => setCurrentPage(userData?.role === 'mentor' ? '/mentor/dashboard' : '/student/dashboard')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6"
         >
           <ArrowLeft size={20} />
@@ -209,9 +183,9 @@ function TaskDetail({ setCurrentPage, userData }) {
               <p className="text-gray-600">{task.description}</p>
             </div>
             <span className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
-              task.difficulty === 'hard' 
+              task.difficulty === 'Hard' 
                 ? 'bg-red-100 text-red-800'
-                : task.difficulty === 'medium'
+                : task.difficulty === 'Medium'
                 ? 'bg-yellow-100 text-yellow-800'
                 : 'bg-green-100 text-green-800'
             }`}>
@@ -228,9 +202,9 @@ function TaskDetail({ setCurrentPage, userData }) {
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Team Size</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Points</p>
               <p className="text-sm font-medium text-gray-800 mt-1">
-                {task.teamSize || '1-4'} members
+                {task.totalPoints || 100} points
               </p>
             </div>
             <div>
@@ -244,7 +218,7 @@ function TaskDetail({ setCurrentPage, userData }) {
               <p className="text-xs text-gray-500 uppercase tracking-wide">Status</p>
               <p className="text-sm font-medium text-gray-800 mt-1 flex items-center gap-2">
                 <CheckCircle size={16} className="text-blue-600" />
-                In Progress
+                {task.status || 'Active'}
               </p>
             </div>
           </div>
@@ -296,17 +270,6 @@ function TaskDetail({ setCurrentPage, userData }) {
             <Users size={18} className="inline mr-2" />
             Team Chat
           </button>
-          <button
-            onClick={() => setActiveTab('video')}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'video'
-                ? 'border-gray-800 text-gray-800'
-                : 'border-transparent text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            <Video size={18} className="inline mr-2" />
-            Video Call
-          </button>
         </div>
 
         {/* Tab Content */}
@@ -322,37 +285,28 @@ function TaskDetail({ setCurrentPage, userData }) {
                 </div>
               </div>
 
-              {task.requirements && task.requirements.length > 0 && (
+              {task.rubric && task.rubric.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Requirements</h3>
-                  <ul className="space-y-2">
-                    {task.requirements.map((req, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-gray-700">
-                        <span className="text-blue-600 mt-1">✓</span>
-                        <span>{req}</span>
-                      </li>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Evaluation Rubric</h3>
+                  <div className="space-y-2">
+                    {task.rubric.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="text-gray-700">{item.criteria}</span>
+                        <span className="font-semibold text-gray-800">{item.points} pts</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
 
-              {task.resources && task.resources.length > 0 && (
+              {task.tags && task.tags.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Resources</h3>
-                  <ul className="space-y-2">
-                    {task.resources.map((resource, idx) => (
-                      <li key={idx}>
-                        <a 
-                          href={resource.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          {resource.title}
-                        </a>
-                      </li>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {task.tags.map((tag, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">{tag}</span>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
 
@@ -372,13 +326,6 @@ function TaskDetail({ setCurrentPage, userData }) {
                   >
                     <MessageSquare size={20} />
                     Contact Mentor
-                  </button>
-                  <button
-                    onClick={() => setShowVideoRequest(!showVideoRequest)}
-                    className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
-                  >
-                    <Video size={20} />
-                    Request Video Chat
                   </button>
                 </div>
               </div>
@@ -450,11 +397,12 @@ function TaskDetail({ setCurrentPage, userData }) {
             </div>
           )}
 
-          {/* Chat Tab */}
+          {/* Chat Tab - Inline */}
           {activeTab === 'chat' && (
             <div>
               <h2 className="text-xl font-bold text-gray-800 mb-4">Task Discussion</h2>
-              <TaskChat taskId={taskId} userData={userData} />
+              <p className="text-sm text-gray-600 mb-4">Chat with your mentor and other students working on this task</p>
+              <TaskChat taskId={taskId} userData={userData} inline={true} />
             </div>
           )}
 
@@ -477,54 +425,6 @@ function TaskDetail({ setCurrentPage, userData }) {
                   <p className="text-sm text-gray-500 mt-2">Add team members in the Collaboration tab to start team chat</p>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Video Call Tab */}
-          {activeTab === 'video' && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Video Call with Mentor</h2>
-              <div className="space-y-4">
-                <p className="text-gray-600">
-                  Use video calls to have direct discussions with your mentor about your task progress and questions.
-                </p>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <div className="flex gap-3">
-                    <Video className="text-blue-600 flex-shrink-0" size={20} />
-                    <div>
-                      <p className="font-semibold text-blue-900 mb-1">How Video Calls Work</p>
-                      <ul className="text-sm text-blue-800 space-y-1">
-                        <li>• Click "Request Video Chat" to send a request to your mentor</li>
-                        <li>• Your mentor will receive a notification and can accept the request</li>
-                        <li>• Both of you will be connected for real-time video/audio discussion</li>
-                        <li>• You can also share your screen for better collaboration</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={() => setShowVideoRequest(!showVideoRequest)}
-                    className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
-                  >
-                    <Video size={20} />
-                    Request Video Chat with Mentor
-                  </button>
-                  
-                  {/* Info about mentoring */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Mentor Info</p>
-                    <p className="text-sm text-gray-600">
-                      Mentor: <span className="font-medium">{task.mentorId?.name || 'Your Mentor'}</span>
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Email: <span className="font-medium">{task.mentorId?.email || 'mentor@example.com'}</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </div>
@@ -560,47 +460,6 @@ function TaskDetail({ setCurrentPage, userData }) {
                   onClick={() => {
                     setShowMentorContact(false);
                     setContactMessage('');
-                  }}
-                  className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Video Chat Request Form */}
-        {showVideoRequest && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Request Video Chat</h3>
-            <form onSubmit={handleVideoRequest} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for Video Chat
-                </label>
-                <textarea
-                  value={videoReason}
-                  onChange={(e) => setVideoReason(e.target.value)}
-                  rows="4"
-                  placeholder="Explain what you'd like to discuss with your mentor..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
-                  required
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Requesting...' : 'Request Video Chat'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowVideoRequest(false);
-                    setVideoReason('');
                   }}
                   className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
                 >

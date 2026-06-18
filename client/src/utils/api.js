@@ -253,4 +253,74 @@ export const googleAuth = async (idToken, role) => {
 
 export const getPublicProfile = async (id) => {
   return apiCall(`/profile/${id}`);
-};
+};
+
+// ========== MENTOR STUDENTS APIs ==========
+
+export const getMentorStudents = async () => {
+  return apiCall('/mentor/students');
+};
+
+// ========== LEADERBOARD & POINTS APIs ==========
+
+export const getLeaderboard = async () => {
+  return apiCall('/leaderboard');
+};
+
+export const getStudentPointsBreakdown = async () => {
+  return apiCall('/student/points-breakdown');
+};
+
+// ========== MARK ALL NOTIFICATIONS READ ==========
+
+export const markAllNotificationsRead = async () => {
+  return apiCall('/notifications/mark-all-read', {
+    method: 'POST',
+  });
+};
+
+// ========== ALUMNI NETWORK APIs ==========
+
+export const getAlumniDirectory = async (searchQuery = '') => {
+  const queryParam = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : '';
+  return apiCall(`/alumni/directory${queryParam}`);
+};
+
+export const sendAlumniMessage = async (receiverId, message) => {
+  return apiCall('/alumni/message', {
+    method: 'POST',
+    body: JSON.stringify({ receiverId, message }),
+  });
+};
+
+export const getAlumniMessages = async (userId) => {
+  return apiCall(`/alumni/messages/${userId}`);
+};
+
+export const getAlumniConversations = async () => {
+  return apiCall('/alumni/conversations');
+};
+
+// ========== MENTOR TASK MANAGEMENT APIs ==========
+
+export const getMentorTaskDetails = async (taskId) => {
+  return apiCall(`/mentor/task/${taskId}/details`);
+};
+
+export const toggleTaskApplications = async (taskId) => {
+  return apiCall(`/mentor/task/${taskId}/toggle-applications`, {
+    method: 'POST',
+  });
+};
+
+export const getExploreTasks = async () => {
+  return apiCall('/tasks/explore');
+};
+
+export const submitWork = async (taskId, data) => {
+  return apiCall(`/tasks/${taskId}/submit`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+

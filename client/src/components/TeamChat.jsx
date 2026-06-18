@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, MessageCircle, X, Plus, Paperclip } from 'lucide-react';
+import { Send, MessageCircle, X, Paperclip } from 'lucide-react';
 import io from 'socket.io-client';
 import { getTeamChatHistory } from '../utils/api';
 
-function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
+function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [socket, setSocket] = useState(null);
@@ -45,7 +45,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
       console.log('Connected to team chat server');
       setIsConnected(true);
       socketInstance.emit('user-online', userData.id);
-      socketInstance.emit('join-team-room', { teamId, userId: userData.id });
+      socketInstance.emit('join-team-room', teamId);
     });
 
     socketInstance.on('disconnect', () => {
@@ -68,8 +68,9 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
       }
     });
 
-    socketInstance.on('team-user-stopped-typing', (userId) => {
-      setTypingUsers(prev => prev.filter(u => u.userId !== userId));
+    socketInstance.on('team-user-stopped-typing', (data) => {
+      const stoppedUserId = typeof data === 'string' ? data : data.userId;
+      setTypingUsers(prev => prev.filter(u => u.userId !== stoppedUserId));
     });
 
     return () => socketInstance.disconnect();
@@ -95,7 +96,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
     });
 
     setNewMessage('');
-    socket.emit('team-user-stopped-typing', userData.id);
+    socket.emit('team-user-stopped-typing', { teamId, userId: userData.id });
   };
 
   const handleTyping = () => {
@@ -114,7 +115,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
 
     // Set new timeout
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('team-user-stopped-typing', userData.id);
+      socket.emit('team-user-stopped-typing', { teamId, userId: userData.id });
     }, 3000);
   };
 
@@ -122,8 +123,9 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
     return null;
   }
 
-  return (
-    <div className="fixed bottom-4 right-4 w-96 h-96 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden z-40">
+  // Shared chat UI — used in both inline and floating mode
+  const chatContent = (
+    <>
       {/* Header */}
       <div className="flex items-center justify-between bg-gray-800 text-white px-4 py-3">
         <div className="flex items-center gap-2">
@@ -132,13 +134,18 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
           {isConnected && (
             <span className="text-xs px-2 py-1 bg-green-600 rounded-full">Live</span>
           )}
+          {!isConnected && (
+            <span className="text-xs px-2 py-1 bg-red-600 rounded-full">Offline</span>
+          )}
         </div>
-        <button
-          onClick={onClose}
-          className="hover:bg-gray-700 p-1 rounded transition"
-        >
-          <X size={20} />
-        </button>
+        {onClose && !inline && (
+          <button
+            onClick={onClose}
+            className="hover:bg-gray-700 p-1 rounded transition"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       {error && (
@@ -165,6 +172,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
               const senderId = msg.senderId?._id || msg.userId;
               const isOwnMessage = senderId === userData?.id;
               const senderName = msg.senderName || msg.userName || 'Unknown';
+              const senderRole = msg.userRole || msg.senderRole || 'student';
 
               return (
                 <div
@@ -178,8 +186,11 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
                         : 'bg-white text-gray-800 border border-gray-200'
                     }`}
                   >
-                    <p className="text-xs font-semibold mb-1 opacity-75">
+                    <p className="text-xs font-semibold mb-1 opacity-75 flex items-center gap-1">
                       {isOwnMessage ? 'You' : senderName}
+                      {senderRole === 'mentor' && (
+                        <span className={`text-xs px-1 py-0.5 rounded ${isOwnMessage ? 'bg-blue-600' : 'bg-blue-100 text-blue-800'}`}>Mentor</span>
+                      )}
                     </p>
                     <p className="text-sm break-words">{msg.message}</p>
                     <p className="text-xs mt-1 opacity-70">
@@ -206,13 +217,6 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
 
       {/* Input */}
       <form onSubmit={handleSendMessage} className="flex gap-2 px-4 py-3 border-t border-gray-200 bg-white">
-        <button
-          type="button"
-          className="p-2 hover:bg-gray-100 rounded transition"
-          title="Attach file"
-        >
-          <Paperclip size={18} className="text-gray-600" />
-        </button>
         <input
           type="text"
           value={newMessage}
@@ -235,6 +239,22 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose }) {
           <Send size={18} />
         </button>
       </form>
+    </>
+  );
+
+  // Inline mode: renders as embedded panel filling its container
+  if (inline) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden rounded-lg border border-gray-200">
+        {chatContent}
+      </div>
+    );
+  }
+
+  // Floating mode (default): fixed bottom-right popup
+  return (
+    <div className="fixed bottom-4 right-4 w-96 h-96 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden z-40">
+      {chatContent}
     </div>
   );
 }

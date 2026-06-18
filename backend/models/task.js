@@ -62,6 +62,10 @@ const taskSchema = mongoose.Schema({
     type: Number,
     default: 0
   },
+  acceptingApplications: {
+    type: Boolean,
+    default: true
+  },
   
   // Timestamps
   createdAt: {

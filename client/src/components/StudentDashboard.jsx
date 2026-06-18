@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Users, Award, Bell, Video, MessageCircle, Clock, X, MessageSquare } from 'lucide-react';
-import { getStudentDashboard, getNotifications } from '../utils/api';
+import { BookOpen, Users, Award, Bell, MessageCircle, Clock, X, MessageSquare, Star, Trophy, CheckCheck, TrendingUp, Github, Send, ChevronDown, ChevronUp } from 'lucide-react';
+import { getStudentDashboard, getNotifications, markNotificationRead, markAllNotificationsRead, submitWork } from '../utils/api';
 import TaskChat from './TaskChat';
 
 // Student Dashboard with backend integration
@@ -19,13 +19,10 @@ function StudentDashboard({ setCurrentPage, userData }) {
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [videoCallModal, setVideoCallModal] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [videoCallData, setVideoCallData] = useState({
-    topic: '',
-    description: ''
-  });
-  const [isSubmittingCall, setIsSubmittingCall] = useState(false);
+  const [expandedSubmitId, setExpandedSubmitId] = useState(null);
+  const [submitGithubUrl, setSubmitGithubUrl] = useState('');
+  const [submitNotes, setSubmitNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch dashboard data and notifications on component mount
   useEffect(() => {
@@ -59,51 +56,72 @@ function StudentDashboard({ setCurrentPage, userData }) {
     }
   };
 
-  const handleVideoCallRequest = async (e) => {
-    e.preventDefault();
-    
-    if (!videoCallData.topic.trim()) {
-      setError('Please specify a discussion topic');
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await markNotificationRead(notificationId);
+      setNotifications(prev => prev.map(n => n._id === notificationId ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error('Failed to mark notification:', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('Failed to mark all notifications:', err);
+    }
+  };
+
+  const handleSubmitWork = async (taskId) => {
+    if (!submitGithubUrl.trim()) {
+      setError('Please enter a GitHub repo URL');
       return;
     }
-
-    setIsSubmittingCall(true);
+    setIsSubmitting(true);
     setError('');
-
     try {
-      const response = await fetch(`http://localhost:5000/tasks/${selectedTask._id}/request-video-chat`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reason: videoCallData.topic + (videoCallData.description ? ` - ${videoCallData.description}` : ''),
-          mentorId: selectedTask.mentorId?._id || selectedTask.mentorId
-        })
+      const response = await submitWork(taskId, {
+        githubUrl: submitGithubUrl.trim(),
+        notes: submitNotes.trim()
       });
-
-      const data = await response.json();
-      if (response.ok) {
-        alert('Video call request sent to mentor! They will respond shortly.');
-        setVideoCallModal(false);
-        setVideoCallData({ topic: '', description: '' });
-      } else {
-        setError(data.error || 'Failed to send video call request');
+      if (response.success) {
+        alert('Work submitted successfully!');
+        setExpandedSubmitId(null);
+        setSubmitGithubUrl('');
+        setSubmitNotes('');
+        fetchDashboard();
       }
     } catch (err) {
-      setError('Failed to send video call request');
-      console.error('Error:', err);
+      setError(err.message || 'Failed to submit work');
     } finally {
-      setIsSubmittingCall(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const getStatusProgress = (status) => {
+    switch(status) {
+      case 'pending_approval': return { width: '15%', label: 'Pending Approval', color: 'bg-yellow-500' };
+      case 'in-progress': return { width: '50%', label: 'In Progress', color: 'bg-blue-500' };
+      case 'submitted': return { width: '80%', label: 'Submitted', color: 'bg-indigo-500' };
+      case 'reviewed': return { width: '100%', label: 'Reviewed', color: 'bg-green-500' };
+      default: return { width: '10%', label: status, color: 'bg-gray-400' };
     }
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading dashboard...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <>
@@ -144,7 +162,7 @@ function StudentDashboard({ setCurrentPage, userData }) {
                 <p className="text-gray-600 text-sm">Active Tasks</p>
                 <p className="text-3xl font-bold text-gray-800">{dashboardData.stats.tasksActive}</p>
               </div>
-              <BookOpen className="text-gray-400" size={32} />
+              <TrendingUp className="text-blue-400" size={32} />
             </div>
           </div>
 
@@ -154,7 +172,7 @@ function StudentDashboard({ setCurrentPage, userData }) {
                 <p className="text-gray-600 text-sm">Badges Earned</p>
                 <p className="text-3xl font-bold text-gray-800">{dashboardData.stats.badgesEarned}</p>
               </div>
-              <Award className="text-gray-400" size={32} />
+              <Award className="text-yellow-400" size={32} />
             </div>
           </div>
 
@@ -186,67 +204,136 @@ function StudentDashboard({ setCurrentPage, userData }) {
 
               <div className="space-y-4">
                 {dashboardData.activeTasks && dashboardData.activeTasks.length > 0 ? (
-                  dashboardData.activeTasks.map(submission => (
-                    <div key={submission._id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-400 cursor-pointer">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800">
-                            {submission.taskId?.title || 'Task'}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Status: {submission.status}
-                          </p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Mentor:{' '}
+                  dashboardData.activeTasks.map(submission => {
+                    const progress = getStatusProgress(submission.status);
+                    return (
+                      <div key={submission._id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-400 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-800">
+                              {submission.taskId?.title || 'Task'}
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Mentor:{' '}
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentPage(`/profile/${submission.taskId?.mentorId?._id}`);
+                                }}
+                                className="text-blue-600 hover:underline font-medium"
+                              >
+                                {submission.taskId?.mentorId?.name || 'Mentor'}
+                              </button>
+                            </p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            submission.status === 'submitted' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : submission.status === 'reviewed'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {submission.status}
+                          </span>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                            <span>{progress.label}</span>
+                            {submission.totalScore > 0 && (
+                              <span className="flex items-center gap-1 text-yellow-600 font-medium">
+                                <Star size={12} /> {submission.totalScore} pts
+                              </span>
+                            )}
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className={`${progress.color} h-2 rounded-full transition-all duration-500`} style={{ width: progress.width }}></div>
+                          </div>
+                        </div>
+                        
+                        {/* Team badge */}
+                        {submission.applyAs === 'team' && submission.teamId && (
+                          <div className="mt-2 flex items-center gap-1 text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded w-fit">
+                            <Users size={12} />
+                            Team: {submission.teamId?.name || 'Team Project'}
+                          </div>
+                        )}
+                        
+                        <div className="mt-3 flex gap-2 flex-wrap">
+                          {/* Submit Work button - only for in-progress tasks */}
+                          {submission.status === 'in-progress' && (
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setCurrentPage(`/profile/${submission.taskId?.mentorId?._id}`);
+                                setExpandedSubmitId(expandedSubmitId === submission._id ? null : submission._id);
+                                setSubmitGithubUrl(submission.githubUrl || '');
+                                setSubmitNotes('');
                               }}
-                              className="text-blue-600 hover:underline font-medium"
+                              className="flex items-center gap-1 text-sm px-3 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 font-medium"
                             >
-                              {submission.taskId?.mentorId?.name || 'Mentor'}
+                              <Github size={16} />
+                              Submit Work
+                              {expandedSubmitId === submission._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                             </button>
-                          </p>
+                          )}
+                          <button 
+                            onClick={() => setActiveChatTaskId(submission.taskId._id)}
+                            className="flex items-center gap-1 text-sm px-3 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                          >
+                            <MessageSquare size={16} />
+                            Chat
+                          </button>
+                          <button 
+                            onClick={() => setCurrentPage(`/task/${submission.taskId._id}/details`)}
+                            className="flex-1 text-sm px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                          >
+                            View Details
+                          </button>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          submission.status === 'submitted' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : submission.status === 'reviewed'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {submission.status}
-                        </span>
+
+                        {/* Expandable Submit Form */}
+                        {expandedSubmitId === submission._id && submission.status === 'in-progress' && (
+                          <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <h4 className="font-semibold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                              <Github size={16} />
+                              Submit Your Work
+                            </h4>
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">GitHub Repo / Collaboration Link *</label>
+                                <input
+                                  type="url"
+                                  value={submitGithubUrl}
+                                  onChange={(e) => setSubmitGithubUrl(e.target.value)}
+                                  placeholder="https://github.com/username/repo"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Notes (optional)</label>
+                                <textarea
+                                  value={submitNotes}
+                                  onChange={(e) => setSubmitNotes(e.target.value)}
+                                  placeholder="Any additional notes for the mentor..."
+                                  rows={2}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800 text-sm"
+                                />
+                              </div>
+                              <button
+                                onClick={() => handleSubmitWork(submission.taskId._id)}
+                                disabled={isSubmitting || !submitGithubUrl.trim()}
+                                className="w-full flex items-center justify-center gap-2 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                              >
+                                <Send size={16} />
+                                {isSubmitting ? 'Submitting...' : 'Submit for Review'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="mt-3 flex gap-2">
-                        <button 
-                          onClick={() => setActiveChatTaskId(submission.taskId._id)}
-                          className="flex items-center gap-1 text-sm px-3 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
-                        >
-                          <MessageSquare size={16} />
-                          Chat
-                        </button>
-                        <button 
-                          onClick={() => setCurrentPage(`/task/${submission.taskId._id}/details`)}
-                          className="flex-1 text-sm px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
-                        >
-                          View Details
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setSelectedTask(submission.taskId);
-                            setVideoCallData({ topic: '', description: '' });
-                            setVideoCallModal(true);
-                          }}
-                          className="flex items-center gap-1 text-sm px-3 py-2 bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
-                        >
-                          <Video size={16} />
-                          Call
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <p>No active tasks</p>
@@ -265,9 +352,23 @@ function StudentDashboard({ setCurrentPage, userData }) {
           {/* Notifications Section */}
           <div className="md:col-span-1">
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Bell className="text-gray-600" size={20} />
-                <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Bell className="text-gray-600" size={20} />
+                  <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
+                  {unreadCount > 0 && (
+                    <span className="bg-red-600 text-white text-xs rounded-full px-2 py-0.5">{unreadCount}</span>
+                  )}
+                </div>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                  >
+                    <CheckCheck size={14} />
+                    All Read
+                  </button>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -297,14 +398,25 @@ function StudentDashboard({ setCurrentPage, userData }) {
                     };
                     
                     return (
-                      <div key={notification._id} className="border-b border-gray-200 pb-4 last:border-b-0">
+                      <div key={notification._id} className={`border-b border-gray-200 pb-4 last:border-b-0 ${notification.isRead ? 'opacity-60' : ''}`}>
                         <div className="flex items-start gap-2">
                           <span className={`px-2 py-1 text-xs font-semibold rounded ${getTypeColor(notification.type)}`}>
                             {notification.type?.replace('_', ' ').toUpperCase()}
                           </span>
                         </div>
                         <p className="text-sm text-gray-800 mt-2">{notification.message}</p>
-                        <p className="text-xs text-gray-500 mt-1">{formatDate(notification.createdAt)}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-xs text-gray-500">{formatDate(notification.createdAt)}</p>
+                          {!notification.isRead && (
+                            <button
+                              onClick={() => handleMarkAsRead(notification._id)}
+                              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                            >
+                              <CheckCheck size={12} />
+                              Read
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })
@@ -344,98 +456,10 @@ function StudentDashboard({ setCurrentPage, userData }) {
         </div>
       </div>
     </div>
-
-    {/* Video Call Request Modal */}
-    {videoCallModal && selectedTask && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Video size={24} className="text-purple-600" />
-              <h2 className="text-xl font-bold text-gray-800">Request Video Call</h2>
-            </div>
-            <button 
-              onClick={() => setVideoCallModal(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleVideoCallRequest} className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Task</p>
-              <p className="text-gray-800 font-semibold">{selectedTask.title}</p>
-              <p className="text-xs text-gray-600 mt-1">Mentor: {selectedTask.mentorId?.name || 'Your Mentor'}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Discussion Topic <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="text"
-                value={videoCallData.topic}
-                onChange={(e) => setVideoCallData({ ...videoCallData, topic: e.target.value })}
-                placeholder="e.g., Code review, debugging, design feedback"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                required
-                disabled={isSubmittingCall}
-              />
-              <p className="text-xs text-gray-500 mt-1">What would you like to discuss?</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Additional Details (Optional)
-              </label>
-              <textarea
-                value={videoCallData.description}
-                onChange={(e) => setVideoCallData({ ...videoCallData, description: e.target.value })}
-                placeholder="Any specific issues or questions you'd like to prepare for..."
-                rows="3"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                disabled={isSubmittingCall}
-              />
-            </div>
-
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-              <p className="text-sm text-purple-800">
-                <span className="font-semibold">💡 Tip:</span> Your mentor will receive this request and can accept or schedule a time that works for both of you.
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                className="flex-1 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50"
-                disabled={isSubmittingCall}
-              >
-                {isSubmittingCall ? 'Sending...' : 'Send Request'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setVideoCallModal(false)}
-                className="flex-1 px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                disabled={isSubmittingCall}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )}
     
     {/* Global Task Chat Overlay */}
     {activeChatTaskId && (
-      <TaskChat taskId={activeChatTaskId} userData={userData} />
+      <TaskChat taskId={activeChatTaskId} userData={userData} onClose={() => setActiveChatTaskId(null)} />
     )}
     </>
   );

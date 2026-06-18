@@ -1,29 +1,32 @@
 import { useState, useEffect } from 'react';
-import { Users, CheckCircle, Clock, XCircle, Eye, Send, Bell, Github, AlertCircle, MessageCircle, Video, X, MessageSquare } from 'lucide-react';
-import { getMentorTasks, getMentorSubmissions, getNotifications, getPendingApplications, approveApplication, rejectApplication } from '../utils/api';
+import { Users, CheckCircle, Clock, XCircle, Eye, Send, Bell, Github, AlertCircle, MessageCircle, X, MessageSquare, Trophy, Star, ChevronDown, ChevronUp, CheckCheck, Mail, BookOpen, ArrowLeft, Lock, Unlock, Search, ExternalLink } from 'lucide-react';
+import { getMentorTasks, getNotifications, getMentorStudents, getLeaderboard, markNotificationRead, markAllNotificationsRead, getMentorTaskDetails, approveApplication, rejectApplication, toggleTaskApplications, getExploreTasks } from '../utils/api';
 import TaskChat from './TaskChat';
 
-// Enhanced Mentor Dashboard - Merged with all features + Notifications
 function MentorDashboardEnhanced({ setCurrentPage, userData }) {
   const [tasks, setTasks] = useState([]);
   const [activeChatTaskId, setActiveChatTaskId] = useState(null);
-  const [pendingReviews, setPendingReviews] = useState([]);
-  const [inProgressWork, setInProgressWork] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('my-tasks');
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [totalStudents, setTotalStudents] = useState(0);
+
+  // Individual task drill-down state
   const [selectedTask, setSelectedTask] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, applications, progress, reviews, calls, notifications
-  const [videoCallRequests, setVideoCallRequests] = useState([]);
-  const [ongoingCall, setOngoingCall] = useState(null);
+  const [taskDetails, setTaskDetails] = useState(null);
+  const [taskDetailTab, setTaskDetailTab] = useState('overview');
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
+  // Explore state
+  const [exploreTasks, setExploreTasks] = useState([]);
+  const [exploreSearch, setExploreSearch] = useState('');
+  const [isLoadingExplore, setIsLoadingExplore] = useState(false);
+
   const [stats, setStats] = useState({
     activeTasks: 0,
-    totalTeams: 0,
-    pendingReviews: 0,
-    completedReviews: 0,
-    inProgressCount: 0,
-    pendingVideoRequests: 0,
+    totalStudents: 0,
     unreadNotifications: 0
   });
 
@@ -33,179 +36,559 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
 
   const fetchAllData = async () => {
     try {
-      // Fetch mentor's tasks
       const tasksResponse = await getMentorTasks();
       if (tasksResponse.success) {
         setTasks(tasksResponse.tasks || []);
-        const activeTasks = tasksResponse.tasks.filter(t => t.status === 'active').length;
-        const totalTeams = tasksResponse.tasks.reduce((sum, task) => sum + (task.activeTeams || 0), 0);
-        setStats(prev => ({ ...prev, activeTasks, totalTeams }));
-      }
-
-      // Fetch submissions (pending, in-progress, reviewed)
-      const submissionsResponse = await getMentorSubmissions();
-      if (submissionsResponse.success) {
-        const pending = submissionsResponse.submissions.filter(s => s.status === 'submitted');
-        const inProgress = submissionsResponse.submissions.filter(s => s.status === 'in-progress');
-        setPendingReviews(pending);
-        setInProgressWork(inProgress);
         setStats(prev => ({
           ...prev,
-          pendingReviews: pending.length,
-          completedReviews: submissionsResponse.submissions.filter(s => s.status === 'reviewed').length,
-          inProgressCount: inProgress.length
+          activeTasks: (tasksResponse.tasks || []).filter(t => t.status === 'active').length
         }));
       }
 
-      // Fetch pending applications
-      const pendingAppsResponse = await getPendingApplications();
-      if (pendingAppsResponse.success) {
-        setPendingRequests(pendingAppsResponse.applications || []);
-      }
+      try {
+        const studentsResponse = await getMentorStudents();
+        if (studentsResponse.success) {
+          setTotalStudents(studentsResponse.totalStudents || 0);
+          setStats(prev => ({ ...prev, totalStudents: studentsResponse.totalStudents || 0 }));
+        }
+      } catch (e) { /* ignore */ }
 
-      // Fetch notifications
+      try {
+        const leaderboardResponse = await getLeaderboard();
+        if (leaderboardResponse.success) {
+          setLeaderboard(leaderboardResponse.leaderboard || []);
+        }
+      } catch (e) { /* ignore */ }
+
       const notificationsResponse = await getNotifications();
       if (notificationsResponse.success) {
         const allNotifications = notificationsResponse.notifications || [];
         setNotifications(allNotifications);
-        
-        // Extract video call requests
-        const videoRequests = allNotifications.filter(n => n.type === 'video_request');
-        setVideoCallRequests(videoRequests);
-        
-        const unreadCount = allNotifications.filter(n => !n.isRead).length;
-        const pendingVideoCount = videoRequests.filter(n => !n.isRead).length;
-        setStats(prev => ({ ...prev, unreadNotifications: unreadCount, pendingVideoRequests: pendingVideoCount }));
+        setStats(prev => ({ ...prev, unreadNotifications: allNotifications.filter(n => !n.isRead).length }));
       }
     } catch (err) {
       setError('Failed to load dashboard data');
-      console.error('Error:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleApproveApplication = async (applicationId) => {
+  // Open individual task detail
+  const openTaskDetail = async (task) => {
+    setSelectedTask(task);
+    setTaskDetailTab('overview');
+    setIsLoadingDetails(true);
+    try {
+      const response = await getMentorTaskDetails(task._id);
+      if (response.success) {
+        setTaskDetails(response);
+      }
+    } catch (err) {
+      setError('Failed to load task details');
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  const closeTaskDetail = () => {
+    setSelectedTask(null);
+    setTaskDetails(null);
+  };
+
+  const handleApprove = async (applicationId) => {
     try {
       const response = await approveApplication(applicationId);
       if (response.success) {
         alert('Application approved!');
-        fetchAllData(); // refresh data
+        openTaskDetail(selectedTask); // Refresh
       }
     } catch (err) {
-      setError(err.message || 'Failed to approve application');
+      setError(err.message || 'Failed to approve');
     }
   };
 
-  const handleRejectApplication = async (applicationId) => {
-    if (!window.confirm('Are you sure you want to reject this application?')) return;
+  const handleReject = async (applicationId) => {
+    if (!window.confirm('Reject this application?')) return;
     try {
       const response = await rejectApplication(applicationId);
       if (response.success) {
-        alert('Application rejected!');
-        fetchAllData(); // refresh data
+        alert('Application rejected');
+        openTaskDetail(selectedTask);
       }
     } catch (err) {
-      setError(err.message || 'Failed to reject application');
+      setError(err.message || 'Failed to reject');
     }
   };
 
-  const handleAcceptVideoCall = (request) => {
-    setOngoingCall(request);
-    alert(`Starting video call with ${request.studentName || 'Student'}...`);
-    // In real app: start WebRTC connection, open video interface
-  };
-
-  const handleDeclineVideoCall = (requestId) => {
-    setVideoCallRequests(videoCallRequests.filter(r => r._id !== requestId));
-    alert('Video call declined');
-  };
-
-  const handleEndCall = () => {
-    alert('Video call ended');
-    setOngoingCall(null);
-    setVideoCallRequests(videoCallRequests.filter(r => r._id !== ongoingCall._id));
-  };
-
-  const getNotificationIcon = (type) => {
-    switch(type) {
-      case 'video_request':
-        return <Video size={18} className="text-purple-600" />;
-      case 'task_completion':
-        return <CheckCircle size={18} className="text-green-600" />;
-      case 'team_invite':
-        return <Users size={18} className="text-blue-600" />;
-      case 'mentor_message':
-        return <MessageCircle size={18} className="text-gray-600" />;
-      default:
-        return <Bell size={18} className="text-gray-600" />;
+  const handleToggleApplications = async (taskId) => {
+    try {
+      const response = await toggleTaskApplications(taskId);
+      if (response.success) {
+        // Update local task data
+        setTasks(prev => prev.map(t => t._id === taskId ? { ...t, acceptingApplications: response.acceptingApplications } : t));
+        if (selectedTask && selectedTask._id === taskId) {
+          setSelectedTask(prev => ({ ...prev, acceptingApplications: response.acceptingApplications }));
+          if (taskDetails) {
+            setTaskDetails(prev => ({
+              ...prev,
+              task: { ...prev.task, acceptingApplications: response.acceptingApplications }
+            }));
+          }
+        }
+      }
+    } catch (err) {
+      setError('Failed to toggle applications');
     }
   };
 
-  const getNotificationColor = (type) => {
-    switch(type) {
-      case 'video_request':
-        return 'bg-purple-50 border-purple-200';
-      case 'task_completion':
-        return 'bg-green-50 border-green-200';
-      case 'team_invite':
-        return 'bg-blue-50 border-blue-200';
-      default:
-        return 'bg-gray-50 border-gray-200';
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await markNotificationRead(notificationId);
+      setNotifications(prev => prev.map(n => n._id === notificationId ? { ...n, isRead: true } : n));
+      setStats(prev => ({ ...prev, unreadNotifications: Math.max(0, prev.unreadNotifications - 1) }));
+    } catch (err) { /* ignore */ }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setStats(prev => ({ ...prev, unreadNotifications: 0 }));
+    } catch (err) { /* ignore */ }
+  };
+
+  const fetchExploreTasks = async () => {
+    setIsLoadingExplore(true);
+    try {
+      const response = await getExploreTasks();
+      if (response.success) {
+        setExploreTasks(response.tasks || []);
+      }
+    } catch (err) {
+      setError('Failed to load explore tasks');
+    } finally {
+      setIsLoadingExplore(false);
     }
+  };
+
+  const getStatusBadge = (status) => {
+    switch(status) {
+      case 'in-progress': return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">In Progress</span>;
+      case 'submitted': return <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs font-medium">Submitted</span>;
+      case 'reviewed': return <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">Reviewed</span>;
+      case 'pending_approval': return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">Pending</span>;
+      default: return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">{status}</span>;
+    }
+  };
+
+  const isDeadlinePassed = (deadline) => {
+    if (!deadline) return false;
+    return new Date(deadline) < new Date();
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading dashboard...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Welcome back, {userData?.name || 'Mentor'}!</h1>
-            <p className="text-gray-600 mt-2">Manage tasks, review applications, and monitor student progress</p>
+  // ========== INDIVIDUAL TASK DETAIL VIEW ==========
+  if (selectedTask) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Back Button */}
+          <button onClick={closeTaskDetail} className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6">
+            <ArrowLeft size={20} /> Back to Dashboard
+          </button>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-center justify-between">
+              <span>{error}</span>
+              <button onClick={() => setError('')}><X size={18} /></button>
+            </div>
+          )}
+
+          {/* Task Header */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold text-gray-800">{selectedTask.title}</h1>
+                <p className="text-gray-600 mt-2">{selectedTask.description}</p>
+                <div className="flex flex-wrap items-center gap-3 mt-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    selectedTask.difficulty === 'Hard' ? 'bg-red-100 text-red-800'
+                    : selectedTask.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-green-100 text-green-800'
+                  }`}>{selectedTask.difficulty}</span>
+                  <span className="text-sm text-gray-600 flex items-center gap-1">
+                    <Trophy size={14} className="text-yellow-500" /> {selectedTask.totalPoints || 100} pts
+                  </span>
+                  <span className={`text-sm flex items-center gap-1 ${isDeadlinePassed(selectedTask.deadline) ? 'text-red-600' : 'text-gray-600'}`}>
+                    <Clock size={14} /> Deadline: {selectedTask.deadline ? new Date(selectedTask.deadline).toLocaleDateString() : 'None'}
+                    {isDeadlinePassed(selectedTask.deadline) && ' (Passed)'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Application Toggle */}
+              <div className="flex flex-col gap-2 items-end">
+                <button
+                  onClick={() => handleToggleApplications(selectedTask._id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                    selectedTask.acceptingApplications !== false
+                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                      : 'bg-red-100 text-red-800 hover:bg-red-200'
+                  }`}
+                >
+                  {selectedTask.acceptingApplications !== false ? <Unlock size={16} /> : <Lock size={16} />}
+                  {selectedTask.acceptingApplications !== false ? 'Applications Open' : 'Applications Closed'}
+                </button>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  selectedTask.status === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                }`}>{selectedTask.status}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Task Stats */}
+          {taskDetails && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+                <p className="text-2xl font-bold text-yellow-600">{taskDetails.pendingApplications?.length || 0}</p>
+                <p className="text-sm text-gray-600">Pending Requests</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+                <p className="text-2xl font-bold text-blue-600">{taskDetails.inProgress?.length || 0}</p>
+                <p className="text-sm text-gray-600">In Progress</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+                <p className="text-2xl font-bold text-orange-600">{taskDetails.submitted?.length || 0}</p>
+                <p className="text-sm text-gray-600">Submitted</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+                <p className="text-2xl font-bold text-green-600">{taskDetails.reviewed?.length || 0}</p>
+                <p className="text-sm text-gray-600">Reviewed</p>
+              </div>
+            </div>
+          )}
+
+          {/* Sub-Tabs */}
+          <div className="flex gap-2 mb-6 border-b border-gray-200 bg-white rounded-t-lg px-4 py-3 overflow-x-auto">
+            {['overview', 'requests', 'students', 'chat', 'notifications'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setTaskDetailTab(tab)}
+                className={`pb-2 px-4 font-medium border-b-2 transition-colors whitespace-nowrap text-sm ${
+                  taskDetailTab === tab ? 'border-gray-800 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                {tab === 'overview' ? 'Overview' 
+                  : tab === 'requests' ? `Requests (${taskDetails?.pendingApplications?.length || 0})`
+                  : tab === 'students' ? `Students (${taskDetails?.totalStudents || 0})`
+                  : tab === 'chat' ? 'Chat'
+                  : 'Notifications'}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-white rounded-b-lg shadow-sm p-6">
+            {isLoadingDetails ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mx-auto mb-3"></div>
+                <p className="text-gray-500">Loading...</p>
+              </div>
+            ) : (
+              <>
+                {/* Overview */}
+                {taskDetailTab === 'overview' && (
+                  <div className="space-y-6">
+                    {/* Rubric */}
+                    {selectedTask.rubric && selectedTask.rubric.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Evaluation Rubric</h3>
+                        <div className="space-y-2">
+                          {selectedTask.rubric.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <span className="text-gray-700">{item.criteria}</span>
+                              <span className="font-semibold text-gray-800">{item.points} pts</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Tags */}
+                    {selectedTask.tags && selectedTask.tags.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Tags</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTask.tags.map((tag, idx) => (
+                            <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* All Students Summary */}
+                    {taskDetails && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">Activity Summary</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                          {[
+                            ...taskDetails.inProgress?.map(s => ({ ...s, _status: 'in-progress' })) || [],
+                            ...taskDetails.submitted?.map(s => ({ ...s, _status: 'submitted' })) || [],
+                            ...taskDetails.reviewed?.map(s => ({ ...s, _status: 'reviewed' })) || []
+                          ].map((sub, idx) => (
+                            <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                              <div className="w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                                {sub.studentId?.name?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-800 text-sm truncate">{sub.studentId?.name}</p>
+                                <p className="text-xs text-gray-500">{sub.studentId?.email}</p>
+                              </div>
+                              {getStatusBadge(sub._status || sub.status)}
+                              {sub.totalScore > 0 && (
+                                <span className="text-xs font-semibold text-yellow-600 flex items-center gap-1">
+                                  <Star size={12} /> {sub.totalScore}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                          {(!taskDetails.inProgress?.length && !taskDetails.submitted?.length && !taskDetails.reviewed?.length) && (
+                            <p className="col-span-2 text-gray-500 text-center py-4">No students working on this task yet</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Requests */}
+                {taskDetailTab === 'requests' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800">Pending Requests</h3>
+                      <button
+                        onClick={() => handleToggleApplications(selectedTask._id)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium ${
+                          selectedTask.acceptingApplications !== false ? 'bg-red-100 text-red-800 hover:bg-red-200' : 'bg-green-100 text-green-800 hover:bg-green-200'
+                        }`}
+                      >
+                        {selectedTask.acceptingApplications !== false ? <><Lock size={14} /> Close Applications</> : <><Unlock size={14} /> Open Applications</>}
+                      </button>
+                    </div>
+                    {taskDetails?.pendingApplications?.length > 0 ? (
+                      <div className="space-y-4">
+                        {taskDetails.pendingApplications.map(app => (
+                          <div key={app._id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center font-bold">
+                                    {app.studentId?.name?.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <button onClick={() => setCurrentPage(`/profile/${app.studentId?._id}`)} className="font-semibold text-gray-800 hover:text-blue-600 hover:underline">
+                                      {app.studentId?.name}
+                                    </button>
+                                    <p className="text-sm text-gray-500">{app.studentId?.email}</p>
+                                  </div>
+                                </div>
+                                {app.applicantGithubUrl && (
+                                  <a href={app.applicantGithubUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex items-center gap-1 mt-2">
+                                    <Github size={14} /> {app.applicantGithubUrl}
+                                  </a>
+                                )}
+                                {app.message && (
+                                  <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700 italic">"{app.message}"</div>
+                                )}
+                                {app.applyAs === 'team' && app.teamId && (
+                                  <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-800">
+                                    Team: {app.teamId.name} ({app.teamId.members?.length} members)
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex gap-2 shrink-0">
+                                <button onClick={() => handleApprove(app._id)} className="flex items-center gap-1 px-3 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 text-sm font-medium">
+                                  <CheckCircle size={16} /> Approve
+                                </button>
+                                <button onClick={() => handleReject(app._id)} className="flex items-center gap-1 px-3 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm font-medium">
+                                  <XCircle size={16} /> Reject
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Users size={40} className="mx-auto text-gray-300 mb-3" />
+                        <p className="text-gray-500">No pending requests</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Students */}
+                {taskDetailTab === 'students' && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-800">All Students</h3>
+                    {[
+                      { title: 'In Progress', items: taskDetails?.inProgress || [], color: 'blue' },
+                      { title: 'Submitted (Pending Review)', items: taskDetails?.submitted || [], color: 'orange' },
+                      { title: 'Reviewed', items: taskDetails?.reviewed || [], color: 'green' }
+                    ].map(group => group.items.length > 0 && (
+                      <div key={group.title}>
+                        <h4 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">{group.title} ({group.items.length})</h4>
+                        <div className="space-y-2">
+                          {group.items.map(sub => (
+                            <div key={sub._id} className={`border-l-4 border-${group.color}-400 bg-${group.color}-50 rounded-r-lg p-4`}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                                    {sub.studentId?.name?.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <button onClick={() => setCurrentPage(`/profile/${sub.studentId?._id}`)} className="font-medium text-gray-800 hover:text-blue-600 hover:underline">
+                                      {sub.studentId?.name}
+                                    </button>
+                                    <p className="text-xs text-gray-500">{sub.studentId?.email}</p>
+                                    {sub.studentId?.skills?.length > 0 && (
+                                      <div className="flex gap-1 mt-1">
+                                        {sub.studentId.skills.slice(0, 3).map((s, i) => (
+                                          <span key={i} className="px-1.5 py-0.5 bg-white text-gray-600 rounded text-xs">{s}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  {sub.githubUrl && (
+                                    <a href={sub.githubUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">
+                                      <Github size={18} />
+                                    </a>
+                                  )}
+                                  {sub.totalScore > 0 && (
+                                    <span className="flex items-center gap-1 text-sm font-semibold text-yellow-600">
+                                      <Star size={14} /> {sub.totalScore}
+                                    </span>
+                                  )}
+                                  {group.title.includes('Submitted') && (
+                                    <button onClick={() => setCurrentPage('mentor-evaluation')} className="px-3 py-1 bg-gray-800 text-white rounded text-xs hover:bg-gray-700">
+                                      Review
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {(!taskDetails?.inProgress?.length && !taskDetails?.submitted?.length && !taskDetails?.reviewed?.length) && (
+                      <div className="text-center py-8">
+                        <Users size={40} className="mx-auto text-gray-300 mb-3" />
+                        <p className="text-gray-500">No students yet</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Chat */}
+                {taskDetailTab === 'chat' && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Task Chat</h3>
+                    <TaskChat taskId={selectedTask._id} userData={userData} inline={true} />
+                  </div>
+                )}
+
+                {/* Notifications */}
+                {taskDetailTab === 'notifications' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
+                      {stats.unreadNotifications > 0 && (
+                        <button onClick={handleMarkAllAsRead} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded text-xs text-gray-700 hover:bg-gray-200 font-medium">
+                          <CheckCheck size={14} /> Mark All Read
+                        </button>
+                      )}
+                    </div>
+                    {notifications.length > 0 ? (
+                      <div className="space-y-3">
+                        {notifications.map(n => (
+                          <div key={n._id} className={`border rounded-lg p-3 flex items-start gap-3 ${n.isRead ? 'bg-white opacity-70' : 'bg-blue-50 border-blue-200'}`}>
+                            <Bell size={16} className="text-gray-500 mt-1 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-800">{n.message}</p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="text-xs text-gray-500">{new Date(n.createdAt).toLocaleString()}</span>
+                                {!n.isRead && (
+                                  <button onClick={() => handleMarkAsRead(n._id)} className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                                    <CheckCheck size={12} /> Read
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {!n.isRead && <span className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></span>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Bell size={40} className="mx-auto text-gray-300 mb-3" />
+                        <p className="text-gray-500">No notifications</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
-        {/* Error Message */}
+        {activeChatTaskId && (
+          <TaskChat taskId={activeChatTaskId} userData={userData} onClose={() => setActiveChatTaskId(null)} />
+        )}
+      </div>
+    );
+  }
+
+  // ========== MAIN DASHBOARD VIEW ==========
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">Welcome back, {userData?.name || 'Mentor'}!</h1>
+          <p className="text-gray-600 mt-2">Manage your tasks, review applications, and monitor student progress</p>
+        </div>
+
         {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center justify-between">
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError('')} className="text-red-700 hover:text-red-900">
-              <X size={20} />
-            </button>
+            <button onClick={() => setError('')}><X size={18} /></button>
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <p className="text-gray-600 text-sm">My Tasks</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1">{tasks.length}</p>
+          </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-gray-600 text-sm">Active Tasks</p>
-            <p className="text-2xl font-bold text-gray-800 mt-1">{stats.activeTasks}</p>
+            <p className="text-2xl font-bold text-blue-600 mt-1">{stats.activeTasks}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-gray-600 text-sm">Total Teams</p>
-            <p className="text-2xl font-bold text-gray-800 mt-1">{stats.totalTeams}</p>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-gray-600 text-sm">In Progress</p>
-            <p className="text-2xl font-bold text-blue-600 mt-1">{stats.inProgressCount}</p>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-gray-600 text-sm">Pending Reviews</p>
-            <p className="text-2xl font-bold text-orange-600 mt-1">{stats.pendingReviews}</p>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-gray-600 text-sm">Completed Reviews</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">{stats.completedReviews}</p>
+            <p className="text-gray-600 text-sm">Total Students</p>
+            <p className="text-2xl font-bold text-green-600 mt-1">{totalStudents}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-gray-600 text-sm">Notifications</p>
@@ -217,534 +600,228 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-6 flex gap-2 border-b border-gray-200 bg-white rounded-t-lg px-6 py-4">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`pb-2 px-4 font-medium border-b-2 transition-colors ${
-              activeTab === 'overview'
-                ? 'border-gray-800 text-gray-800'
-                : 'border-transparent text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('applications')}
-            className={`pb-2 px-4 font-medium border-b-2 transition-colors ${
-              activeTab === 'applications'
-                ? 'border-gray-800 text-gray-800'
-                : 'border-transparent text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Applications
-          </button>
-          <button
-            onClick={() => setActiveTab('progress')}
-            className={`pb-2 px-4 font-medium border-b-2 transition-colors ${
-              activeTab === 'progress'
-                ? 'border-gray-800 text-gray-800'
-                : 'border-transparent text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            In Progress ({stats.inProgressCount})
-          </button>
-          <button
-            onClick={() => setActiveTab('reviews')}
-            className={`pb-2 px-4 font-medium border-b-2 transition-colors ${
-              activeTab === 'reviews'
-                ? 'border-gray-800 text-gray-800'
-                : 'border-transparent text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Pending Reviews
-          </button>
-          <button
-            onClick={() => setActiveTab('calls')}
-            className={`pb-2 px-4 font-medium border-b-2 transition-colors relative ${
-              activeTab === 'calls'
-                ? 'border-gray-800 text-gray-800'
-                : 'border-transparent text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Video size={18} />
-              Video Calls
-              {stats.pendingVideoRequests > 0 && (
-                <span className="bg-red-600 text-white text-xs rounded-full px-2 py-0.5 ml-1">
-                  {stats.pendingVideoRequests}
-                </span>
+        <div className="mb-6 flex gap-2 border-b border-gray-200 bg-white rounded-t-lg px-6 py-4 overflow-x-auto">
+          {[
+            { key: 'my-tasks', label: 'My Tasks' },
+            { key: 'explore', label: 'Explore Tasks' },
+            { key: 'leaderboard', label: 'Leaderboard' },
+            { key: 'notifications', label: 'Notifications' }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                if (tab.key === 'explore' && exploreTasks.length === 0) fetchExploreTasks();
+              }}
+              className={`pb-2 px-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab.key ? 'border-gray-800 text-gray-800' : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              {tab.label}
+              {tab.key === 'notifications' && stats.unreadNotifications > 0 && (
+                <span className="ml-2 bg-red-600 text-white text-xs rounded-full px-2 py-0.5">{stats.unreadNotifications}</span>
               )}
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('notifications')}
-            className={`pb-2 px-4 font-medium border-b-2 transition-colors relative ${
-              activeTab === 'notifications'
-                ? 'border-gray-800 text-gray-800'
-                : 'border-transparent text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              Notifications
-              {stats.unreadNotifications > 0 && (
-                <span className="bg-red-600 text-white text-xs rounded-full px-2 py-0.5">
-                  {stats.unreadNotifications}
-                </span>
+              {tab.key === 'my-tasks' && (
+                <span className="ml-2 text-xs text-gray-400">({tasks.length})</span>
               )}
-            </div>
-          </button>
+            </button>
+          ))}
         </div>
 
         {/* Tab Content */}
         <div className="bg-white rounded-b-lg shadow-sm p-6">
 
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* My Tasks */}
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <AlertCircle size={24} />
-                  My Tasks
-                </h2>
-                <div className="space-y-3">
-                  {tasks.length > 0 ? (
-                    tasks.map(task => (
-                      <button
-                        key={task._id}
-                        onClick={() => {
-                          setSelectedTask(task);
-                          setActiveTab('applications');
-                        }}
-                        className="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all"
-                      >
-                        <p className="font-semibold text-gray-800">{task.title}</p>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                          <span className="flex items-center gap-1">
-                            <Users size={14} />
-                            {task.applicants || 0} applicants
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock size={14} />
-                            {task.activeTeams || 0} active
-                          </span>
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500 text-sm">No tasks created yet</p>
-                      <button
-                        onClick={() => setCurrentPage('mentor-create-task')}
-                        className="mt-4 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 text-sm"
-                      >
-                        Create Task
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Quick Stats */}
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <CheckCircle size={24} />
-                  Quick Summary
-                </h2>
-                <div className="space-y-3">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm font-medium text-blue-900">Work In Progress</p>
-                    <p className="text-2xl font-bold text-blue-600 mt-1">{stats.inProgressCount} teams</p>
-                    <p className="text-xs text-blue-700 mt-2">Currently working on your tasks</p>
-                  </div>
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                    <p className="text-sm font-medium text-orange-900">Pending Reviews</p>
-                    <p className="text-2xl font-bold text-orange-600 mt-1">{stats.pendingReviews} submissions</p>
-                    <p className="text-xs text-orange-700 mt-2">Waiting for your evaluation</p>
-                  </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                    <p className="text-sm font-medium text-purple-900">New Notifications</p>
-                    <p className="text-2xl font-bold text-purple-600 mt-1">{stats.unreadNotifications} unread</p>
-                    <p className="text-xs text-purple-700 mt-2">Video calls and messages</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Applications Tab */}
-          {activeTab === 'applications' && (
+          {/* My Tasks Tab */}
+          {activeTab === 'my-tasks' && (
             <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <Users size={24} />
-                Pending Applications ({pendingRequests.length})
-              </h2>
-              
-              {pendingRequests.length > 0 ? (
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800">My Tasks</h2>
+                <button
+                  onClick={() => setCurrentPage('mentor-create-task')}
+                  className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 text-sm font-medium"
+                >
+                  + Create New Task
+                </button>
+              </div>
+
+              {tasks.length > 0 ? (
                 <div className="space-y-4">
-                  {pendingRequests.map(app => (
-                    <div key={app._id} className="border border-gray-200 rounded-lg p-5 hover:bg-gray-50 transition-all bg-white">
-                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-800">{app.taskId?.title}</h3>
-                          <div className="mt-2 space-y-2">
-                            <p className="text-sm text-gray-600">
-                              <span className="font-semibold">Applicant:</span>{' '}
-                              <button 
-                                onClick={() => setCurrentPage(`/profile/${app.studentId?._id}`)}
-                                className="text-blue-600 hover:underline font-medium"
-                              >
-                                {app.studentId?.name}
-                              </button>{' '}
-                              ({app.studentId?.email})
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              <span className="font-semibold">Applying As:</span> <span className="capitalize">{app.applyAs || 'Individual'}</span>
-                            </p>
-                            {app.applyAs === 'team' && app.teamId && (
-                              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Team Members ({app.teamId.name})</p>
-                                <ul className="space-y-1">
-                                  {app.teamId.members?.map(member => (
-                                    <li key={member._id} className="text-sm text-gray-700 flex items-center gap-2">
-                                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                                      <button 
-                                        onClick={() => setCurrentPage(`/profile/${member._id}`)}
-                                        className="text-blue-600 hover:underline font-medium"
-                                      >
-                                        {member.name}
-                                      </button>
-                                      <span className="text-gray-500">({member.email})</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
+                  {tasks.map(task => (
+                    <div key={task._id} className="border border-gray-200 rounded-lg p-5 hover:border-gray-400 hover:shadow-sm transition-all cursor-pointer"
+                      onClick={() => openTaskDetail(task)}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-bold text-gray-800 text-lg">{task.title}</h3>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              task.status === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                            }`}>{task.status}</span>
+                            {task.acceptingApplications === false && (
+                              <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs flex items-center gap-1">
+                                <Lock size={10} /> Closed
+                              </span>
                             )}
-                            <p className="text-sm text-gray-600">
-                              <span className="font-semibold">GitHub Profile:</span>{' '}
-                              <a 
-                                href={app.applicantGithubUrl || app.githubUrl} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline inline-flex items-center gap-1"
-                              >
-                                <Github size={14} />
-                                {app.applicantGithubUrl || app.githubUrl || 'Not provided'}
-                              </a>
-                            </p>
-                            {app.message && (
-                              <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                <p className="text-xs text-gray-500 font-semibold uppercase mb-1">Student Pitch</p>
-                                <p className="text-sm text-gray-700 italic">"{app.message}"</p>
-                              </div>
+                            {isDeadlinePassed(task.deadline) && (
+                              <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Deadline Passed</span>
                             )}
                           </div>
-                        </div>
-                        
-                        <div className="flex gap-3 shrink-0">
-                          <button
-                            onClick={() => handleApproveApplication(app._id)}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 font-medium text-sm"
-                          >
-                            <CheckCircle size={16} />
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleRejectApplication(app._id)}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 font-medium text-sm"
-                          >
-                            <XCircle size={16} />
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  <Users size={48} className="mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500">No pending applications right now.</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* In Progress Tab */}
-          {activeTab === 'progress' && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <Eye size={24} />
-                In Progress Work ({stats.inProgressCount})
-              </h2>
-              {inProgressWork.length > 0 ? (
-                <div className="space-y-4">
-                  {inProgressWork.map(work => (
-                    <div key={work._id} className="border border-blue-200 bg-blue-50 rounded-lg p-4 hover:border-blue-400 transition-colors">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800">{work.taskId?.title || 'Task'}</h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Team:{' '}
-                            <button 
-                              onClick={() => setCurrentPage(`/profile/${work.studentId?._id}`)}
-                              className="text-blue-600 hover:underline font-medium"
-                            >
-                              {work.studentId?.name || 'Student'}
-                            </button>
-                          </p>
-                          {work.applyAs === 'team' && work.teamId && (
-                            <div className="mt-3 p-3 bg-white bg-opacity-60 border border-blue-200 rounded-lg">
-                              <p className="text-xs text-blue-800 font-semibold uppercase mb-2">Team Members ({work.teamId.name})</p>
-                              <ul className="space-y-1">
-                                {work.teamId.members?.map(member => (
-                                  <li key={member._id} className="text-sm text-gray-700 flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                                    <button 
-                                      onClick={() => setCurrentPage(`/profile/${member._id}`)}
-                                      className="text-blue-600 hover:underline font-medium"
-                                    >
-                                      {member.name}
-                                    </button>
-                                    <span className="text-gray-500">({member.email})</span>
-                                  </li>
-                                ))}
-                              </ul>
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{task.description}</p>
+                          <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                            <span className="flex items-center gap-1"><Users size={14} /> {task.applicants || 0} applicants</span>
+                            <span className="flex items-center gap-1"><Clock size={14} /> {task.activeTeams || 0} active</span>
+                            <span className="flex items-center gap-1"><Trophy size={14} /> {task.totalPoints || 100} pts</span>
+                            <span className="flex items-center gap-1"><Clock size={14} /> {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</span>
+                          </div>
+                          {task.tags && task.tags.length > 0 && (
+                            <div className="flex gap-1 mt-2">
+                              {task.tags.map((tag, idx) => (
+                                <span key={idx} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">{tag}</span>
+                              ))}
                             </div>
                           )}
                         </div>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium self-start shrink-0">In Progress</span>
-                      </div>
-
-                      {work.githubUrl && (
-                        <div className="mb-3 p-3 bg-white rounded border border-blue-200">
-                          <p className="text-xs text-gray-600 font-medium uppercase mb-1">GitHub Repository</p>
-                          <a 
-                            href={work.githubUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline break-all flex items-center gap-2"
+                        <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleToggleApplications(task._id); }}
+                            className={`p-2 rounded-lg transition-colors ${
+                              task.acceptingApplications !== false ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-red-50 text-red-600 hover:bg-red-100'
+                            }`}
+                            title={task.acceptingApplications !== false ? 'Close Applications' : 'Open Applications'}
                           >
-                            <Github size={16} />
-                            View Repository
-                          </a>
-                        </div>
-                      )}
-
-                      {work.notes && (
-                        <div className="mb-3 p-3 bg-white rounded border border-blue-200">
-                          <p className="text-xs text-gray-600 font-medium uppercase mb-1">Progress Notes</p>
-                          <p className="text-sm text-gray-700">{work.notes}</p>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Started: {new Date(work.createdAt).toLocaleDateString()}</span>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => setActiveChatTaskId(work.taskId._id)}
-                            className="px-4 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm font-medium flex items-center gap-1"
-                          >
-                            <MessageSquare size={14} />
-                            Chat
+                            {task.acceptingApplications !== false ? <Unlock size={18} /> : <Lock size={18} />}
                           </button>
-                          <button className="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Eye size={48} className="mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500">No work in progress yet</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Pending Reviews Tab */}
-          {activeTab === 'reviews' && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <CheckCircle size={24} />
-                Pending Reviews ({stats.pendingReviews})
-              </h2>
-              {pendingReviews.length > 0 ? (
-                <div className="space-y-4">
-                  {pendingReviews.map(review => (
-                    <div key={review._id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                      <div className="mb-3">
-                        <h3 className="font-semibold text-gray-800">{review.taskId?.title || 'Task'}</h3>
-                        <p className="text-sm text-gray-600 mt-1">Student: {review.studentId?.name || 'Student'}</p>
-                      </div>
-
-                      {review.githubUrl && (
-                        <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
-                          <p className="text-xs text-gray-600 font-medium uppercase mb-1">GitHub Repository</p>
-                          <a 
-                            href={review.githubUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline break-all flex items-center gap-2"
-                          >
-                            <Github size={16} />
-                            {review.githubUrl}
-                          </a>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Submitted: {new Date(review.submittedAt).toLocaleDateString()}</span>
-                        <button 
-                          onClick={() => setCurrentPage('mentor-evaluation')}
-                          className="px-4 py-1 bg-gray-800 text-white rounded hover:bg-gray-700 text-sm font-medium"
-                        >
-                          Review
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <CheckCircle size={48} className="mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500">No pending reviews</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Video Calls Tab */}
-          {activeTab === 'calls' && (
-            <div>
-              {ongoingCall ? (
-                // Active Call Interface - Simple & Clean
-                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-8">
-                  <div className="text-center mb-8">
-                    <div className="w-24 h-24 rounded-full bg-purple-200 mx-auto mb-4 flex items-center justify-center">
-                      <Video size={48} className="text-purple-600" />
-                    </div>
-                    <h2 className="text-3xl font-bold text-gray-800">{ongoingCall.studentName || 'Student'}</h2>
-                    <p className="text-gray-600 mt-2">{ongoingCall.taskName || 'Task Discussion'}</p>
-                    <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-100 rounded-full">
-                      <span className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></span>
-                      <span className="text-green-700 font-semibold">Call in Progress</span>
-                    </div>
-                  </div>
-
-                  {/* Call Controls */}
-                  <div className="flex gap-4 justify-center mb-8">
-                    <button className="p-4 bg-gray-600 text-white rounded-full hover:bg-gray-700 transition-all" title="Mute/Unmute">
-                      <MessageCircle size={24} />
-                    </button>
-                    <button className="p-4 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-all" title="Video On/Off">
-                      <Video size={24} />
-                    </button>
-                    <button className="p-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all" title="Share Screen">
-                      <Eye size={24} />
-                    </button>
-                    <button 
-                      onClick={handleEndCall}
-                      className="p-4 bg-red-600 text-white rounded-full hover:bg-red-700 transition-all"
-                      title="End Call"
-                    >
-                      <X size={24} />
-                    </button>
-                  </div>
-
-                  {/* Call Info */}
-                  <div className="bg-white rounded-lg p-4 max-w-md mx-auto">
-                    <p className="text-sm text-gray-600 font-medium uppercase mb-2">Call Details</p>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Student:</span>
-                        <span className="font-semibold text-gray-800">{ongoingCall.studentName || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Task:</span>
-                        <span className="font-semibold text-gray-800">{ongoingCall.taskName || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Topic:</span>
-                        <span className="font-semibold text-gray-800">{ongoingCall.topic || 'General Help'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : videoCallRequests.length > 0 ? (
-                // Incoming Call Requests - Simple & Prominent
-                <div className="space-y-4">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <Video size={28} className="text-purple-600" />
-                    Video Call Requests ({videoCallRequests.length})
-                  </h2>
-
-                  {videoCallRequests.map(request => (
-                    <div
-                      key={request._id}
-                      className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-6 hover:shadow-lg transition-all"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          {/* Student Avatar & Name */}
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="w-12 h-12 rounded-full bg-purple-300 flex items-center justify-center">
-                              <Users size={24} className="text-purple-700" />
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-gray-800 text-lg">{request.studentName || 'Student'}</h3>
-                              <p className="text-sm text-gray-600">{request.studentEmail || 'email@example.com'}</p>
-                            </div>
+                          <div className="p-2 bg-gray-50 text-gray-600 rounded-lg">
+                            <Eye size={18} />
                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500">You haven't created any tasks yet</p>
+                  <button onClick={() => setCurrentPage('mentor-create-task')} className="mt-4 px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700">
+                    Create Your First Task
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
-                          {/* Request Details */}
-                          <div className="bg-white rounded-lg p-3 mb-4 space-y-2">
-                            <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase">Task</p>
-                              <p className="text-gray-800 font-medium">{request.taskName || 'Task Discussion'}</p>
+          {/* Explore Tab */}
+          {activeTab === 'explore' && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800">Explore Other Mentors' Tasks</h2>
+              </div>
+              
+              {/* Search */}
+              <div className="relative mb-6">
+                <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  value={exploreSearch}
+                  onChange={(e) => setExploreSearch(e.target.value)}
+                  placeholder="Search tasks by title, description, or tags..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                />
+              </div>
+
+              {isLoadingExplore ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mx-auto mb-3"></div>
+                  <p className="text-gray-500">Loading tasks...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {exploreTasks
+                    .filter(t => t.mentorId?._id !== userData?.id) // Exclude own tasks
+                    .filter(t => {
+                      if (!exploreSearch) return true;
+                      const q = exploreSearch.toLowerCase();
+                      return t.title?.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q) || t.tags?.some(tag => tag.toLowerCase().includes(q));
+                    })
+                    .map(task => (
+                      <div key={task._id} className="border border-gray-200 rounded-lg p-5 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-bold text-gray-800 text-lg">{task.title}</h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                              By{' '}
+                              <button onClick={() => setCurrentPage(`/profile/${task.mentorId?._id}`)} className="text-blue-600 hover:underline font-medium">
+                                {task.mentorId?.name || 'Mentor'}
+                              </button>
+                              {task.mentorId?.company && <span className="text-gray-400"> • {task.mentorId.company}</span>}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-2 line-clamp-2">{task.description}</p>
+                            <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                task.difficulty === 'Hard' ? 'bg-red-100 text-red-800'
+                                : task.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-green-100 text-green-800'
+                              }`}>{task.difficulty}</span>
+                              <span className="flex items-center gap-1"><Trophy size={14} /> {task.totalPoints || 100} pts</span>
+                              <span className="flex items-center gap-1"><Clock size={14} /> {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</span>
+                              <span className="flex items-center gap-1"><Users size={14} /> {task.applicants || 0} applicants</span>
                             </div>
-                            {request.topic && (
-                              <div>
-                                <p className="text-xs font-semibold text-gray-500 uppercase">Topic</p>
-                                <p className="text-gray-800">{request.topic}</p>
+                            {task.tags && task.tags.length > 0 && (
+                              <div className="flex gap-1 mt-2">
+                                {task.tags.map((tag, idx) => (
+                                  <span key={idx} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">{tag}</span>
+                                ))}
                               </div>
                             )}
-                            <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase">Requested</p>
-                              <p className="text-gray-800">{new Date(request.createdAt).toLocaleString()}</p>
-                            </div>
                           </div>
+                          <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded text-xs font-medium flex items-center gap-1 ml-4 shrink-0">
+                            <Eye size={14} /> View Only
+                          </span>
                         </div>
+                      </div>
+                    ))}
+                  {exploreTasks.filter(t => t.mentorId?._id !== userData?.id).length === 0 && !isLoadingExplore && (
+                    <div className="text-center py-8">
+                      <Search size={40} className="mx-auto text-gray-300 mb-3" />
+                      <p className="text-gray-500">No other tasks found</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-                        {/* Accept/Decline Buttons */}
-                        <div className="flex flex-col gap-3 min-w-max">
-                          <button
-                            onClick={() => handleAcceptVideoCall(request)}
-                            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold flex items-center gap-2 transition-all whitespace-nowrap"
-                          >
-                            <Video size={18} />
-                            Accept Call
-                          </button>
-                          <button
-                            onClick={() => handleDeclineVideoCall(request._id)}
-                            className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 font-bold transition-all whitespace-nowrap"
-                          >
-                            Decline
-                          </button>
-                        </div>
+          {/* Leaderboard Tab */}
+          {activeTab === 'leaderboard' && (
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <Trophy size={24} className="text-yellow-500" />
+                Student Leaderboard
+              </h2>
+              {leaderboard.length > 0 ? (
+                <div className="space-y-2">
+                  {leaderboard.map((student, idx) => (
+                    <div key={student._id} className={`flex items-center gap-4 p-4 rounded-lg transition-all ${idx < 3 ? 'bg-gray-50 shadow-sm' : 'bg-white'}`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                        idx === 0 ? 'bg-yellow-400 text-yellow-900' : idx === 1 ? 'bg-gray-300 text-gray-800' : idx === 2 ? 'bg-orange-300 text-orange-900' : 'bg-gray-100 text-gray-600'
+                      }`}>{idx + 1}</div>
+                      <div className="flex-1 min-w-0">
+                        <button onClick={() => setCurrentPage(`/profile/${student._id}`)} className="font-semibold text-gray-800 hover:text-blue-600 hover:underline">
+                          {student.name}
+                        </button>
+                        <p className="text-xs text-gray-500">{student.education || student.email}</p>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-gray-600">{student.tasksCompleted} tasks</span>
+                        <span className="font-bold text-gray-800 flex items-center gap-1"><Star size={14} className="text-yellow-500" /> {student.totalPoints} pts</span>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                // No Calls
-                <div className="text-center py-16">
-                  <Video size={64} className="mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500 text-xl font-medium">No video call requests</p>
-                  <p className="text-gray-400 mt-2">Students will request calls here when they need help</p>
+                <div className="text-center py-8">
+                  <Trophy size={48} className="mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500">No leaderboard data yet</p>
                 </div>
               )}
             </div>
@@ -753,88 +830,59 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <Bell size={24} />
-                All Notifications ({notifications.length})
-              </h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <Bell size={24} /> Notifications
+                </h2>
+                {stats.unreadNotifications > 0 && (
+                  <button onClick={handleMarkAllAsRead} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+                    <CheckCheck size={16} /> Mark All Read
+                  </button>
+                )}
+              </div>
               {notifications.length > 0 ? (
-                <div className="space-y-4">
-                  {notifications.map(notification => (
-                    <div 
-                      key={notification._id} 
-                      className={`border rounded-lg p-4 flex items-start gap-4 ${
-                        notification.isRead ? 'bg-white opacity-75' : getNotificationColor(notification.type)
-                      }`}
-                    >
-                      <div className="flex-shrink-0 pt-1">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-800">{notification.title}</h3>
-                            <p className="text-sm text-gray-700 mt-1">{notification.message}</p>
-                          </div>
-                          {!notification.isRead && (
-                            <span className="flex-shrink-0 w-2 h-2 bg-red-600 rounded-full mt-2"></span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-3">
-                          <span className="text-xs text-gray-500">
-                            {new Date(notification.createdAt).toLocaleDateString()}
-                          </span>
-                          {notification.type === 'video_request' && (
-                            <button className="text-xs text-purple-600 hover:text-purple-700 font-medium">
-                              Accept Call
-                            </button>
-                          )}
-                          {notification.type === 'task_completion' && (
-                            <button className="text-xs text-green-600 hover:text-green-700 font-medium">
-                              Review Work
+                <div className="space-y-3">
+                  {notifications.map(n => (
+                    <div key={n._id} className={`border rounded-lg p-4 flex items-start gap-3 ${n.isRead ? 'bg-white opacity-70' : 'bg-blue-50 border-blue-200'}`}>
+                      <Bell size={16} className="text-gray-500 mt-1 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-800">{n.message}</p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-xs text-gray-500">{new Date(n.createdAt).toLocaleString()}</span>
+                          {!n.isRead && (
+                            <button onClick={() => handleMarkAsRead(n._id)} className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                              <CheckCheck size={12} /> Mark Read
                             </button>
                           )}
                         </div>
                       </div>
+                      {!n.isRead && <span className="w-2 h-2 bg-blue-600 rounded-full mt-2"></span>}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
+                <div className="text-center py-8">
                   <Bell size={48} className="mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500">No notifications yet</p>
+                  <p className="text-gray-500">No notifications</p>
                 </div>
               )}
             </div>
           )}
-
         </div>
 
-        {/* Quick Actions Footer */}
+        {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
           <div className="grid md:grid-cols-3 gap-4">
-            <button 
-              onClick={() => setCurrentPage('mentor-task-create')}
-              className="p-4 bg-gray-100 rounded-lg hover:bg-gray-200 text-left transition-colors"
-            >
+            <button onClick={() => setCurrentPage('mentor-create-task')} className="p-4 bg-gray-100 rounded-lg hover:bg-gray-200 text-left transition-colors">
               <p className="font-semibold text-gray-800">Create New Task</p>
               <p className="text-sm text-gray-600 mt-1">Post a new project for students</p>
             </button>
-            
-            <button 
-              onClick={() => setActiveTab('reviews')}
-              className="p-4 bg-gray-100 rounded-lg hover:bg-gray-200 text-left transition-colors"
-            >
+            <button onClick={() => setCurrentPage('mentor-evaluation')} className="p-4 bg-gray-100 rounded-lg hover:bg-gray-200 text-left transition-colors">
               <p className="font-semibold text-gray-800">Review Submissions</p>
               <p className="text-sm text-gray-600 mt-1">Evaluate pending work</p>
             </button>
-            
-            <button 
-              onClick={() => setCurrentPage('mentor-profile')}
-              className="p-4 bg-gray-100 rounded-lg hover:bg-gray-200 text-left transition-colors"
-            >
+            <button onClick={() => setCurrentPage('mentor-profile')} className="p-4 bg-gray-100 rounded-lg hover:bg-gray-200 text-left transition-colors">
               <p className="font-semibold text-gray-800">Edit Profile</p>
               <p className="text-sm text-gray-600 mt-1">Update your information</p>
             </button>
@@ -842,9 +890,8 @@ function MentorDashboardEnhanced({ setCurrentPage, userData }) {
         </div>
       </div>
 
-      {/* Global Task Chat Overlay */}
       {activeChatTaskId && (
-        <TaskChat taskId={activeChatTaskId} userData={userData} />
+        <TaskChat taskId={activeChatTaskId} userData={userData} onClose={() => setActiveChatTaskId(null)} />
       )}
     </div>
   );

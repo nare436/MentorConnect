@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Calendar, Tag, X, Video, HelpCircle } from 'lucide-react';
+import { Search, Calendar, Tag, X, HelpCircle } from 'lucide-react';
 import { getAllTasks, applyToTask } from '../utils/api';
 
 // Browse Tasks Component with backend integration
@@ -105,15 +105,6 @@ function BrowseTasks({ setCurrentPage }) {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Browse Tasks</h1>
           <p className="text-gray-600">Find and apply to tasks that match your skills</p>
-        </div>
-
-        {/* Video Call Feature Info Banner */}
-        <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 flex items-start gap-3">
-          <Video size={20} className="text-purple-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-gray-800">💬 Need Help? Request a Video Call</p>
-            <p className="text-sm text-gray-700 mt-1">Once you apply to a task and start working, you can request a video call with your mentor anytime for guidance, code reviews, or discussions. Just click <span className="font-medium">"Request Call"</span> on your dashboard!</p>
-          </div>
         </div>
 
         {/* Error Message */}

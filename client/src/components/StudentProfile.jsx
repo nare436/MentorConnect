@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Mail, Github, Linkedin, Award, Edit2 } from 'lucide-react';
-import { getStudentProfile, updateStudentProfile, getBadges } from '../utils/api';
+import { Mail, Github, Linkedin, Award, Edit2, Star, Trophy, TrendingUp, Clock } from 'lucide-react';
+import { getStudentProfile, updateStudentProfile, getBadges, getStudentPointsBreakdown } from '../utils/api';
 
 // Student Profile Component with backend integration
 function StudentProfile({ setCurrentPage, userData }) {
@@ -11,6 +11,7 @@ function StudentProfile({ setCurrentPage, userData }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [badges, setBadges] = useState([]);
+  const [pointsData, setPointsData] = useState({ totalPoints: 0, rank: 0, breakdown: [] });
   
   // Profile data state
   const [profileData, setProfileData] = useState({
@@ -42,10 +43,27 @@ function StudentProfile({ setCurrentPage, userData }) {
     }
   };
 
+  // Fetch points breakdown
+  const fetchPoints = async () => {
+    try {
+      const response = await getStudentPointsBreakdown();
+      if (response.success) {
+        setPointsData({
+          totalPoints: response.totalPoints || 0,
+          rank: response.rank || 0,
+          breakdown: response.breakdown || []
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load points:', err);
+    }
+  };
+
   // Fetch profile and badges on mount
   useEffect(() => {
     fetchProfile();
     fetchBadges();
+    fetchPoints();
   }, []);
 
   const fetchProfile = async () => {
@@ -126,10 +144,27 @@ function StudentProfile({ setCurrentPage, userData }) {
     }
   };
 
+  const getDifficultyColor = (difficulty) => {
+    switch(difficulty) {
+      case 'Easy': return 'bg-green-100 text-green-800';
+      case 'Medium': return 'bg-yellow-100 text-yellow-800';
+      case 'Hard': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPointsPercentage = (earned, max) => {
+    if (!max) return 0;
+    return Math.min(100, Math.round((earned / max) * 100));
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading profile...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
       </div>
     );
   }
@@ -234,6 +269,49 @@ function StudentProfile({ setCurrentPage, userData }) {
                     </a>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Points & Rank Card */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Trophy className="text-yellow-500" size={22} />
+                <h3 className="text-lg font-bold text-gray-800">Points & Rank</h3>
+              </div>
+              
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center gap-2">
+                  <Star size={24} className="text-yellow-500" />
+                  <span className="text-3xl font-bold text-gray-800">{pointsData.totalPoints}</span>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">Total Points Earned</p>
+              </div>
+              
+              {pointsData.rank > 0 && (
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-3 mb-4 text-center">
+                  <p className="text-xs text-yellow-800 uppercase font-semibold">Current Rank</p>
+                  <p className="text-2xl font-bold text-yellow-700 mt-1">#{pointsData.rank}</p>
+                </div>
+              )}
+              
+              {/* Points Milestones */}
+              <div className="space-y-2">
+                {[100, 250, 500, 1000].map(milestone => (
+                  <div key={milestone}>
+                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                      <span>{milestone} pts milestone</span>
+                      <span>{Math.min(100, Math.round((pointsData.totalPoints / milestone) * 100))}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                      <div 
+                        className={`h-1.5 rounded-full transition-all ${
+                          pointsData.totalPoints >= milestone ? 'bg-yellow-500' : 'bg-yellow-300'
+                        }`}
+                        style={{ width: `${Math.min(100, (pointsData.totalPoints / milestone) * 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -358,6 +436,82 @@ function StudentProfile({ setCurrentPage, userData }) {
                   >
                     Add
                   </button>
+                </div>
+              )}
+            </div>
+
+            {/* Contribution Timeline */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp size={20} className="text-gray-600" />
+                <h3 className="text-lg font-bold text-gray-800">Contribution Timeline</h3>
+              </div>
+              
+              {pointsData.breakdown.length > 0 ? (
+                <div className="space-y-4">
+                  {pointsData.breakdown.map((entry, idx) => (
+                    <div key={idx} className="flex gap-4">
+                      {/* Timeline dot */}
+                      <div className="flex flex-col items-center">
+                        <div className={`w-3 h-3 rounded-full ${
+                          idx === 0 ? 'bg-green-500' : 'bg-gray-300'
+                        }`}></div>
+                        {idx < pointsData.breakdown.length - 1 && (
+                          <div className="w-0.5 h-full bg-gray-200 mt-1"></div>
+                        )}
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 pb-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-800">{entry.taskTitle}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${getDifficultyColor(entry.difficulty)}`}>
+                                {entry.difficulty}
+                              </span>
+                              <span className="text-xs text-gray-500 flex items-center gap-1">
+                                <Clock size={12} />
+                                {entry.reviewedAt ? new Date(entry.reviewedAt).toLocaleDateString() : 'Unknown'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-bold text-gray-800 flex items-center gap-1">
+                              <Star size={14} className="text-yellow-500" />
+                              {entry.earnedPoints}/{entry.maxPoints}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Score bar */}
+                        <div className="mt-2">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full transition-all ${
+                                getPointsPercentage(entry.earnedPoints, entry.maxPoints) >= 80 ? 'bg-green-500'
+                                : getPointsPercentage(entry.earnedPoints, entry.maxPoints) >= 50 ? 'bg-yellow-500'
+                                : 'bg-red-400'
+                              }`}
+                              style={{ width: `${getPointsPercentage(entry.earnedPoints, entry.maxPoints)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        
+                        {entry.feedback && (
+                          <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded text-xs text-blue-800">
+                            <span className="font-semibold">Mentor Feedback:</span> {entry.feedback}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <TrendingUp size={40} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500">No contributions yet</p>
+                  <p className="text-sm text-gray-400 mt-1">Complete tasks to see your contribution timeline</p>
                 </div>
               )}
             </div>
