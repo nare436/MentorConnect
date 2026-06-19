@@ -62,11 +62,11 @@ export default function CommunityFeed({ userData }) {
 
         setShowCodeInput(false);
       } else {
-        alert(response.error || 'Failed to create post. The image might be too large.');
+        alert(response.error || 'Failed to create post.');
       }
     } catch (err) {
       console.error('Failed to create post', err);
-      alert('An error occurred. If you attached an image, it might be too large.');
+      alert(err.message || 'An error occurred while creating the post.');
     } finally {
       setIsSubmitting(false);
     }

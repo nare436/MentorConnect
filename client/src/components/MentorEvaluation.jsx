@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { evaluateSubmission, getMentorSubmissions } from '../utils/api';
 
 function MentorEvaluation({ setCurrentPage, submissionId }) {
-  const [scores, setScores] = useState({});
+  const [mark, setMark] = useState('');
   const [feedback, setFeedback] = useState('');
   const [submission, setSubmission] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,8 +17,9 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
     try {
       const response = await getMentorSubmissions();
       if (response.success) {
-        // Find the specific submission or use first one
-        const sub = response.submissions[0] || null;
+        // Find the first submission that needs review
+        const pendingSubmissions = response.submissions.filter(s => s.status === 'submitted');
+        const sub = pendingSubmissions[0] || null;
         setSubmission(sub);
       }
     } catch (err) {
@@ -28,20 +29,18 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
     }
   };
 
-  const handleScoreChange = (rubricId, value) => {
-    setScores({ ...scores, [rubricId]: parseInt(value) || 0 });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
 
-    const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+    const marksGiven = parseInt(mark) || 0;
+    const totalScore = marksGiven;
 
     try {
       const response = await evaluateSubmission(submission._id, {
-        scores,
+        scores: { mark: marksGiven },
         feedback,
         totalScore
       });
@@ -75,8 +74,6 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
     </div>;
   }
 
-  const rubric = submission.taskId?.rubric || [];
-  const maxScore = rubric.reduce((sum, item) => sum + item.points, 0);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
@@ -102,26 +99,24 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">Score Each Criteria</h3>
+              <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">Score (Out of 10)</h3>
               <div className="space-y-4">
-                {rubric.map((item, index) => (
-                  <div key={index} className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <p className="text-gray-700 dark:text-gray-200">{item.criteria}</p>
-                      <p className="text-sm text-gray-500">Max: {item.points} points</p>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      max={item.points}
-                      value={scores[index] || ''}
-                      onChange={(e) => handleScoreChange(index, e.target.value)}
-                      className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center"
-                      required
-                      disabled={isSubmitting}
-                    />
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-gray-700 dark:text-gray-200">Overall Performance</p>
+                    <p className="text-sm text-gray-500">Max: {submission.taskId?.totalPoints || 0} marks</p>
                   </div>
-                ))}
+                  <input
+                    type="number"
+                    min="0"
+                    max={submission.taskId?.totalPoints || 0}
+                    value={mark}
+                    onChange={(e) => setMark(e.target.value)}
+                    className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
             </div>
 

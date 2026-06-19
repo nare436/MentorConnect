@@ -1083,7 +1083,7 @@ app.post('/mentor/task/create', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Only mentors can create tasks' });
     }
     
-    const { title, description, deadline, difficulty, tags, rubric } = req.body;
+    const { title, description, deadline, difficulty, tags, totalPoints } = req.body;
     
     // Validate deadline is not in the past
     const deadlineDate = new Date(deadline);
@@ -1093,17 +1093,14 @@ app.post('/mentor/task/create', isLoggedIn, async (req, res) => {
       return res.status(400).json({ error: 'Deadline must be today or a future date' });
     }
     
-    // Calculate totalPoints from rubric
-    const totalPoints = (rubric || []).reduce((sum, item) => sum + (parseInt(item.points) || 0), 0);
-    
     const task = await taskModel.create({
       title,
       description,
       deadline,
       difficulty,
       tags,
-      rubric,
-      totalPoints: totalPoints || 100,
+      rubric: [],
+      totalPoints: parseInt(totalPoints) || 10,
       mentorId: req.user.id,
       status: 'active',
       acceptingApplications: true
@@ -1466,7 +1463,7 @@ app.get('/mentor/students', isLoggedIn, async (req, res) => {
 app.get('/leaderboard', isLoggedIn, async (req, res) => {
   try {
     const students = await userModel
-      .find({ role: 'student', totalPoints: { $gt: 0 } })
+      .find({ role: 'student' })
       .select('name email education skills totalPoints profilePicture')
       .sort({ totalPoints: -1 })
       .limit(50);
@@ -1586,9 +1583,21 @@ app.post('/mentor/evaluate/:submissionId', isLoggedIn, async (req, res) => {
     
     // Add points to student's totalPoints
     if (totalScore > 0) {
-      await userModel.findByIdAndUpdate(submission.studentId, {
-        $inc: { totalPoints: totalScore }
-      });
+      let userIdsToUpdate = [submission.studentId];
+      
+      if (submission.applyAs === 'team' && submission.teamId) {
+        const team = await teamModel.findById(submission.teamId);
+        if (team && team.members && team.members.length > 0) {
+          userIdsToUpdate = team.members;
+        }
+      }
+
+      const pointsPerPerson = Math.floor(totalScore / userIdsToUpdate.length);
+
+      await userModel.updateMany(
+        { _id: { $in: userIdsToUpdate } },
+        { $inc: { totalPoints: pointsPerPerson } }
+      );
       
       // Recalculate ranks for all students
       const rankedStudents = await userModel
@@ -1605,64 +1614,79 @@ app.post('/mentor/evaluate/:submissionId', isLoggedIn, async (req, res) => {
       if (bulkOps.length > 0) {
         await userModel.bulkWrite(bulkOps);
       }
-    }
-    
-    // --- Badge Auto-Awarding Logic ---
-    const studentUser = await userModel.findById(submission.studentId);
-    if (studentUser) {
-      const completedCount = await submissionModel.countDocuments({
-        studentId: studentUser._id,
-        status: 'reviewed'
-      });
       
-      const newBadges = [];
-      const awardBadge = async (name, description, icon) => {
-        let badge = await badgeModel.findOne({ name });
-        if (!badge) {
-          badge = await badgeModel.create({ name, description, icon });
-        }
-        if (!studentUser.badges.includes(badge._id)) {
-          studentUser.badges.push(badge._id);
-          newBadges.push(badge.name);
-        }
-      };
+      // --- Badge Auto-Awarding Logic for all involved users ---
+      for (const userId of userIdsToUpdate) {
+        const studentUser = await userModel.findById(userId);
+        if (!studentUser) continue;
+        
+        // Count how many tasks this user has completed
+        // For teams, we need to count individual + team submissions
+        const userTeams = await teamModel.find({ members: userId }).select('_id');
+        const teamIds = userTeams.map(t => t._id);
+        
+        const completedCount = await submissionModel.countDocuments({
+          $or: [
+            { studentId: userId, applyAs: 'individual', status: 'reviewed' },
+            { teamId: { $in: teamIds }, status: 'reviewed' }
+          ]
+        });
+        
+        const newBadges = [];
+        const awardBadge = async (name, description, icon, type, threshold) => {
+          let badge = await badgeModel.findOne({ name });
+          if (!badge) {
+            badge = await badgeModel.create({ 
+              name, 
+              description, 
+              icon,
+              criteria: { type, threshold }
+            });
+          }
+          if (!studentUser.badges.includes(badge._id)) {
+            studentUser.badges.push(badge._id);
+            newBadges.push(badge.name);
+          }
+        };
 
-      if (completedCount >= 1) await awardBadge('First Steps', 'Completed your first task', 'star');
-      if (completedCount >= 3) await awardBadge('Rising Star', 'Completed 3 tasks', 'flame');
-      if (completedCount >= 5) await awardBadge('Task Master', 'Completed 5 tasks', 'trophy');
-      if (studentUser.totalPoints >= 100) await awardBadge('Century Club', 'Earned 100+ points', 'award');
-      if (studentUser.totalPoints >= 500) await awardBadge('Point Prodigy', 'Earned 500+ points', 'crown');
-      
-      if (newBadges.length > 0) {
-        await studentUser.save();
-        for (const bName of newBadges) {
-          await notificationModel.create({
-            userId: studentUser._id,
-            type: 'badge_earned',
-            title: 'New Badge Earned!',
-            message: `Congratulations! You've earned the "${bName}" badge.`,
-            isRead: false
-          });
+        if (completedCount >= 1) await awardBadge('First Steps', 'Completed your first task', 'star', 'first_task', 1);
+        if (completedCount >= 3) await awardBadge('Rising Star', 'Completed 3 tasks', 'flame', 'tasks_completed', 3);
+        if (completedCount >= 5) await awardBadge('Task Master', 'Completed 5 tasks', 'trophy', 'tasks_completed', 5);
+        if (studentUser.totalPoints >= 100) await awardBadge('Century Club', 'Earned 100+ points', 'award', 'mentor_score', 100);
+        if (studentUser.totalPoints >= 500) await awardBadge('Point Prodigy', 'Earned 500+ points', 'crown', 'mentor_score', 500);
+        
+        if (newBadges.length > 0) {
+          await studentUser.save();
+          for (const bName of newBadges) {
+            await notificationModel.create({
+              userId: studentUser._id,
+              type: 'badge_earned',
+              title: 'New Badge Earned!',
+              message: `Congratulations! You've earned the "${bName}" badge.`,
+              isRead: false
+            });
+          }
         }
+        
+        // Notify the student
+        await notificationModel.create({
+          userId: studentUser._id,
+          type: 'submission_reviewed',
+          title: 'Your submission has been reviewed',
+          message: `Your submission for "${submission.taskId.title}" has been evaluated. Score: ${pointsPerPerson}. Points added to your profile!`,
+          relatedTaskId: submission.taskId._id,
+          relatedUserId: req.user.id,
+          isRead: false
+        });
       }
     }
-    // ---------------------------------
     
-    // Notify the student
-    await notificationModel.create({
-      userId: submission.studentId,
-      type: 'submission_reviewed',
-      title: 'Your submission has been reviewed',
-      message: `Your submission for "${submission.taskId.title}" has been evaluated. Score: ${totalScore || 0}. Points added to your profile!`,
-      relatedTaskId: submission.taskId._id,
-      relatedUserId: req.user.id,
-      isRead: false
-    });
+
     
     res.json({ success: true, message: 'Submission evaluated', submission });
   } catch (err) {
     console.error('Evaluation error:', err);
-    res.status(500).json({ error: 'Failed to evaluate submission' });
+    res.status(500).json({ error: err.message || 'Failed to evaluate submission' });
   }
 });
 
@@ -2006,7 +2030,8 @@ app.post('/community/posts', isLoggedIn, async (req, res) => {
       
     res.json({ success: true, post: populatedPost });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create post' });
+    console.error('Error creating post:', err);
+    res.status(500).json({ error: err.message || 'Failed to create post' });
   }
 });
 
