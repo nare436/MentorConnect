@@ -323,4 +323,29 @@ export const submitWork = async (taskId, data) => {
     body: JSON.stringify(data),
   });
 };
-
+
+// ========== COMMUNITY FEED APIs ==========
+
+export const getCommunityPosts = async () => {
+  return apiCall('/community/posts');
+};
+
+export const createCommunityPost = async (postData) => {
+  return apiCall('/community/posts', {
+    method: 'POST',
+    body: JSON.stringify(postData),
+  });
+};
+
+export const likePost = async (postId) => {
+  return apiCall(`/community/posts/${postId}/like`, {
+    method: 'POST',
+  });
+};
+
+export const commentOnPost = async (postId, text) => {
+  return apiCall(`/community/posts/${postId}/comment`, {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+};

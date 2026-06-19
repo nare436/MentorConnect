@@ -33,6 +33,10 @@ const userSchema = mongoose.Schema({
   },
   
   // Profile info (common)
+  profilePicture: {
+    type: String,
+    default: ''
+  },
   bio: {
     type: String,
     default: ''

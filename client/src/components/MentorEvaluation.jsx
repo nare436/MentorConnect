@@ -58,15 +58,15 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-gray-600">Loading submission...</div>
+    return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="text-gray-600 dark:text-gray-300">Loading submission...</div>
     </div>;
   }
 
   if (!submission) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
       <div className="text-center">
-        <p className="text-gray-600 mb-4">No submissions to review</p>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">No submissions to review</p>
         <button onClick={() => setCurrentPage('mentor-dashboard')}
           className="px-6 py-2 bg-gray-800 text-white rounded-lg">
           Back to Dashboard
@@ -79,35 +79,35 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
   const maxScore = rubric.reduce((sum, item) => sum + item.points, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <button onClick={() => setCurrentPage('mentor-dashboard')}
-          className="mb-6 text-gray-600 hover:text-gray-800">
+          className="mb-6 text-gray-600 hover:text-gray-800 dark:text-gray-100">
           ← Back to Dashboard
         </button>
 
         {error && <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
 
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-3">{submission.taskId?.title}</h1>
-          <p className="text-gray-600">Student: {submission.studentId?.name}</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">{submission.taskId?.title}</h1>
+          <p className="text-gray-600 dark:text-gray-300">Student: {submission.studentId?.name}</p>
           {submission.githubUrl && (
             <a href={submission.githubUrl} target="_blank" rel="noopener noreferrer"
               className="text-blue-600 hover:underline text-sm">View GitHub</a>
           )}
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Evaluation</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Evaluation</h2>
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <h3 className="font-semibold text-gray-800 mb-4">Score Each Criteria</h3>
+              <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">Score Each Criteria</h3>
               <div className="space-y-4">
                 {rubric.map((item, index) => (
                   <div key={index} className="flex items-center gap-4">
                     <div className="flex-1">
-                      <p className="text-gray-700">{item.criteria}</p>
+                      <p className="text-gray-700 dark:text-gray-200">{item.criteria}</p>
                       <p className="text-sm text-gray-500">Max: {item.points} points</p>
                     </div>
                     <input
@@ -116,7 +116,7 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
                       max={item.points}
                       value={scores[index] || ''}
                       onChange={(e) => handleScoreChange(index, e.target.value)}
-                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center"
+                      className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center"
                       required
                       disabled={isSubmitting}
                     />
@@ -126,13 +126,13 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Feedback *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Feedback *</label>
               <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 rows="6"
                 placeholder="Provide detailed feedback..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
                 required
                 disabled={isSubmitting}
               />

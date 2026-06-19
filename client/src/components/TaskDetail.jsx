@@ -123,10 +123,10 @@ function TaskDetail({ setCurrentPage, userData }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading task details...</p>
+          <p className="text-gray-600 dark:text-gray-300">Loading task details...</p>
         </div>
       </div>
     );
@@ -134,17 +134,17 @@ function TaskDetail({ setCurrentPage, userData }) {
 
   if (!task) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <button 
             onClick={() => setCurrentPage(userData?.role === 'mentor' ? '/mentor/dashboard' : '/student/dashboard')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 dark:text-gray-100 mb-4"
           >
             <ArrowLeft size={20} />
             Back to Dashboard
           </button>
-          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-            <p className="text-gray-600">Task not found</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 text-center">
+            <p className="text-gray-600 dark:text-gray-300">Task not found</p>
           </div>
         </div>
       </div>
@@ -152,12 +152,12 @@ function TaskDetail({ setCurrentPage, userData }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <button 
           onClick={() => setCurrentPage(userData?.role === 'mentor' ? '/mentor/dashboard' : '/student/dashboard')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 dark:text-gray-100 mb-6"
         >
           <ArrowLeft size={20} />
           Back to Dashboard
@@ -176,11 +176,11 @@ function TaskDetail({ setCurrentPage, userData }) {
         )}
 
         {/* Task Overview Card */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">{task.title}</h1>
-              <p className="text-gray-600">{task.description}</p>
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">{task.title}</h1>
+              <p className="text-gray-600 dark:text-gray-300">{task.description}</p>
             </div>
             <span className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
               task.difficulty === 'Hard' 
@@ -197,26 +197,26 @@ function TaskDetail({ setCurrentPage, userData }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Mentor</p>
-              <p className="text-sm font-medium text-gray-800 mt-1">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100 mt-1">
                 {task.mentorId?.name || 'Assigned Mentor'}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Points</p>
-              <p className="text-sm font-medium text-gray-800 mt-1">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100 mt-1">
                 {task.totalPoints || 100} points
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Deadline</p>
-              <p className="text-sm font-medium text-gray-800 mt-1 flex items-center gap-2">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100 mt-1 flex items-center gap-2">
                 <Clock size={16} />
                 {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Status</p>
-              <p className="text-sm font-medium text-gray-800 mt-1 flex items-center gap-2">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100 mt-1 flex items-center gap-2">
                 <CheckCircle size={16} className="text-blue-600" />
                 {task.status || 'Active'}
               </p>
@@ -225,7 +225,7 @@ function TaskDetail({ setCurrentPage, userData }) {
         </div>
 
         {/* Tabs Navigation */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
+        <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
           <button
             onClick={() => setActiveTab('overview')}
             className={`px-4 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${
@@ -273,26 +273,26 @@ function TaskDetail({ setCurrentPage, userData }) {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
           
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-3">Task Details</h2>
-                <div className="prose prose-sm max-w-none text-gray-700">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-3">Task Details</h2>
+                <div className="prose prose-sm max-w-none text-gray-700 dark:text-gray-200">
                   <p>{task.description}</p>
                 </div>
               </div>
 
               {task.rubric && task.rubric.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Evaluation Rubric</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Evaluation Rubric</h3>
                   <div className="space-y-2">
                     {task.rubric.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-gray-700">{item.criteria}</span>
-                        <span className="font-semibold text-gray-800">{item.points} pts</span>
+                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                        <span className="text-gray-700 dark:text-gray-200">{item.criteria}</span>
+                        <span className="font-semibold text-gray-800 dark:text-gray-100">{item.points} pts</span>
                       </div>
                     ))}
                   </div>
@@ -301,17 +301,17 @@ function TaskDetail({ setCurrentPage, userData }) {
 
               {task.tags && task.tags.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Tags</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Tags</h3>
                   <div className="flex flex-wrap gap-2">
                     {task.tags.map((tag, idx) => (
-                      <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">{tag}</span>
+                      <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-700 dark:text-gray-200 rounded-full text-sm">{tag}</span>
                     ))}
                   </div>
                 </div>
               )}
 
               <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Actions</h3>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Actions</h3>
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={() => setShowCompletionForm(!showCompletionForm)}
@@ -336,15 +336,15 @@ function TaskDetail({ setCurrentPage, userData }) {
           {activeTab === 'collaboration' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-4">GitHub Collaboration</h2>
-                <p className="text-gray-600 mb-4">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">GitHub Collaboration</h2>
+                <p className="text-gray-600 dark:text-gray-300 mb-4">
                   Push your code to GitHub and collaborate with your team members.
                 </p>
                 
-                <div className="bg-gray-50 rounded-lg p-6 mb-4">
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 mb-4">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                         Repository Name
                       </label>
                       <input
@@ -352,7 +352,7 @@ function TaskDetail({ setCurrentPage, userData }) {
                         value={repoName}
                         onChange={(e) => setRepoName(e.target.value)}
                         placeholder="my-awesome-project"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                       />
                     </div>
                     
@@ -375,22 +375,22 @@ function TaskDetail({ setCurrentPage, userData }) {
               </div>
 
               <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Team Members</h3>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Team Members</h3>
                 <div className="space-y-3">
                   {task.teamMembers && task.teamMembers.length > 0 ? (
                     task.teamMembers.map((member, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                         <div className="w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center font-bold">
                           {member.name?.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-gray-800">{member.name}</p>
-                          <p className="text-sm text-gray-600">{member.email}</p>
+                          <p className="font-medium text-gray-800 dark:text-gray-100">{member.name}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">{member.email}</p>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-gray-600">You're working on this task individually</p>
+                    <p className="text-gray-600 dark:text-gray-300">You're working on this task individually</p>
                   )}
                 </div>
               </div>
@@ -400,8 +400,8 @@ function TaskDetail({ setCurrentPage, userData }) {
           {/* Chat Tab - Inline */}
           {activeTab === 'chat' && (
             <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Task Discussion</h2>
-              <p className="text-sm text-gray-600 mb-4">Chat with your mentor and other students working on this task</p>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Task Discussion</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Chat with your mentor and other students working on this task</p>
               <TaskChat taskId={taskId} userData={userData} inline={true} />
             </div>
           )}
@@ -409,8 +409,8 @@ function TaskDetail({ setCurrentPage, userData }) {
           {/* Team Chat Tab */}
           {activeTab === 'team-chat' && (
             <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Team Communication</h2>
-              <p className="text-gray-600 mb-4">Connect and collaborate with your team members</p>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Team Communication</h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">Connect and collaborate with your team members</p>
               {task.teamMembers && task.teamMembers.length > 1 ? (
                 <TeamChat 
                   teamId={task.teamId || task._id} 
@@ -419,9 +419,9 @@ function TaskDetail({ setCurrentPage, userData }) {
                   isOpen={true}
                 />
               ) : (
-                <div className="bg-gray-50 rounded-lg p-8 text-center">
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-8 text-center">
                   <Users size={40} className="mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-600">Team chat is available when you have team members</p>
+                  <p className="text-gray-600 dark:text-gray-300">Team chat is available when you have team members</p>
                   <p className="text-sm text-gray-500 mt-2">Add team members in the Collaboration tab to start team chat</p>
                 </div>
               )}
@@ -431,11 +431,11 @@ function TaskDetail({ setCurrentPage, userData }) {
 
         {/* Contact Mentor Form */}
         {showMentorContact && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Contact Mentor</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Contact Mentor</h3>
             <form onSubmit={handleContactMentor} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Message
                 </label>
                 <textarea
@@ -443,7 +443,7 @@ function TaskDetail({ setCurrentPage, userData }) {
                   onChange={(e) => setContactMessage(e.target.value)}
                   rows="4"
                   placeholder="Type your question or concern here..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                   required
                 />
               </div>
@@ -461,7 +461,7 @@ function TaskDetail({ setCurrentPage, userData }) {
                     setShowMentorContact(false);
                     setContactMessage('');
                   }}
-                  className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                  className="px-6 py-2 bg-gray-200 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300"
                 >
                   Cancel
                 </button>
@@ -472,11 +472,11 @@ function TaskDetail({ setCurrentPage, userData }) {
 
         {/* Task Completion Form */}
         {showCompletionForm && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Report Task Completion</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Report Task Completion</h3>
             <form onSubmit={handleTaskCompletion} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   GitHub Repository URL <span className="text-red-600">*Required</span>
                 </label>
                 <input
@@ -484,7 +484,7 @@ function TaskDetail({ setCurrentPage, userData }) {
                   value={repoName}
                   onChange={(e) => setRepoName(e.target.value)}
                   placeholder="https://github.com/username/repo"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                   required
                 />
                 <p className="text-sm text-gray-500 mt-1">
@@ -492,7 +492,7 @@ function TaskDetail({ setCurrentPage, userData }) {
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Completion Notes
                 </label>
                 <textarea
@@ -500,7 +500,7 @@ function TaskDetail({ setCurrentPage, userData }) {
                   onChange={(e) => setCompletionNotes(e.target.value)}
                   rows="4"
                   placeholder="Describe what you've completed, challenges faced, and lessons learned..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                   required
                 />
               </div>
@@ -518,7 +518,7 @@ function TaskDetail({ setCurrentPage, userData }) {
                     setShowCompletionForm(false);
                     setCompletionNotes('');
                   }}
-                  className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                  className="px-6 py-2 bg-gray-200 text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300"
                 >
                   Cancel
                 </button>

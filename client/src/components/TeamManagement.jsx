@@ -112,7 +112,7 @@ function TeamManagement({ setCurrentPage, userData }) {
   // ── Loading state ──
   if (view === 'loading') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <p className="text-gray-500 text-lg">Loading your team...</p>
       </div>
     );
@@ -121,9 +121,9 @@ function TeamManagement({ setCurrentPage, userData }) {
   // ── Selection view ──
   if (view === 'selection') {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Team Management</h1>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-8 text-center">Team Management</h1>
 
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -132,12 +132,12 @@ function TeamManagement({ setCurrentPage, userData }) {
           )}
 
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow-sm p-8 text-center hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8 text-center hover:shadow-md transition-shadow">
               <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="text-white" size={32} />
               </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-3">Create Team</h2>
-              <p className="text-gray-600 mb-6">Start a new team and invite others using a team code</p>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">Create Team</h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">Start a new team and invite others using a team code</p>
               <button
                 onClick={() => setView('create')}
                 className="px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 w-full"
@@ -146,15 +146,15 @@ function TeamManagement({ setCurrentPage, userData }) {
               </button>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-8 text-center hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8 text-center hover:shadow-md transition-shadow">
               <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="text-white" size={32} />
               </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-3">Join Team</h2>
-              <p className="text-gray-600 mb-6">Join an existing team using the code from your team leader</p>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">Join Team</h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">Join an existing team using the code from your team leader</p>
               <button
                 onClick={() => setView('join')}
-                className="px-6 py-3 bg-white text-gray-800 border-2 border-gray-800 rounded-lg hover:bg-gray-100 w-full"
+                className="px-6 py-3 bg-white dark:bg-gray-800 text-gray-800 border-2 border-gray-800 rounded-lg hover:bg-gray-100 w-full"
               >
                 Join Existing Team
               </button>
@@ -168,10 +168,10 @@ function TeamManagement({ setCurrentPage, userData }) {
   // ── Create team view ──
   if (view === 'create') {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
         <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Create New Team</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Create New Team</h2>
 
             {error && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -181,13 +181,13 @@ function TeamManagement({ setCurrentPage, userData }) {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Team Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Team Name</label>
                 <input
                   type="text"
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
                   placeholder="Enter team name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                   disabled={isLoading}
                 />
               </div>
@@ -200,7 +200,7 @@ function TeamManagement({ setCurrentPage, userData }) {
               </button>
               <button
                 onClick={() => { setView('selection'); setError(''); }}
-                className="w-full py-3 bg-white text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-100"
+                className="w-full py-3 bg-white dark:bg-gray-800 text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-100"
                 disabled={isLoading}
               >
                 Back
@@ -215,10 +215,10 @@ function TeamManagement({ setCurrentPage, userData }) {
   // ── Join team view ──
   if (view === 'join') {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
         <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Join Team</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Join Team</h2>
 
             {error && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -228,14 +228,14 @@ function TeamManagement({ setCurrentPage, userData }) {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Team Code</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Team Code</label>
                 <input
                   type="text"
                   value={teamCode}
                   onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
                   placeholder="Enter 6-digit code"
                   maxLength={6}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800 uppercase"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800 uppercase"
                   disabled={isLoading}
                 />
                 <p className="text-sm text-gray-500 mt-2">Ask your team leader for the team code</p>
@@ -249,7 +249,7 @@ function TeamManagement({ setCurrentPage, userData }) {
               </button>
               <button
                 onClick={() => { setView('selection'); setError(''); }}
-                className="w-full py-3 bg-white text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-100"
+                className="w-full py-3 bg-white dark:bg-gray-800 text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-100"
                 disabled={isLoading}
               >
                 Back
@@ -264,7 +264,7 @@ function TeamManagement({ setCurrentPage, userData }) {
   // ── Team dashboard view ──
   if (view === 'team' && currentTeam) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
         <div className="max-w-4xl mx-auto">
 
           {error && (
@@ -274,11 +274,11 @@ function TeamManagement({ setCurrentPage, userData }) {
           )}
 
           {/* Team Header */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-800">{currentTeam.name}</h1>
-                <p className="text-gray-600 mt-1">Team Code: {currentTeam.code}</p>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{currentTeam.name}</h1>
+                <p className="text-gray-600 dark:text-gray-300 mt-1">Team Code: {currentTeam.code}</p>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -304,12 +304,12 @@ function TeamManagement({ setCurrentPage, userData }) {
           </div>
 
           {/* Team Code */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Invite Code</h2>
-            <p className="text-gray-600 mb-3">Share this code with others to invite them to your team</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Invite Code</h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-3">Share this code with others to invite them to your team</p>
             <div className="flex items-center gap-3">
-              <div className="flex-1 px-4 py-3 bg-gray-100 rounded-lg text-center">
-                <span className="text-2xl font-bold text-gray-800 tracking-widest">
+              <div className="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-center">
+                <span className="text-2xl font-bold text-gray-800 dark:text-gray-100 tracking-widest">
                   {currentTeam.code}
                 </span>
               </div>
@@ -324,20 +324,20 @@ function TeamManagement({ setCurrentPage, userData }) {
           </div>
 
           {/* Team Members */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">
               Team Members ({currentTeam.members?.length || 0})
             </h2>
             <div className="space-y-3">
               {currentTeam.members?.map((member, index) => (
-                <div key={member._id || index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div key={member._id || index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gray-800 text-white rounded-full flex items-center justify-center text-lg font-bold">
                       {member.name?.charAt(0).toUpperCase() || 'M'}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-800">{member.name || 'Member'}</p>
-                      <p className="text-sm text-gray-600">{member.email || ''}</p>
+                      <p className="font-medium text-gray-800 dark:text-gray-100">{member.name || 'Member'}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">{member.email || ''}</p>
                     </div>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -354,13 +354,13 @@ function TeamManagement({ setCurrentPage, userData }) {
 
           {/* Inline Team Chat Section */}
           {isChatOpen && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <div className="flex items-center gap-2 mb-4">
                 <MessageCircle size={22} className="text-indigo-600" />
-                <h2 className="text-xl font-bold text-gray-800">Team Chat</h2>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Team Chat</h2>
                 <span className="text-sm text-gray-500">— Real-time messaging with your team</span>
               </div>
-              <div className="border border-gray-200 rounded-lg overflow-hidden" style={{ height: '400px' }}>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ height: '400px' }}>
                 <TeamChat 
                   teamId={currentTeam._id} 
                   userData={userData}

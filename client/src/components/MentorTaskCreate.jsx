@@ -104,11 +104,11 @@ function MentorTaskCreate({ setCurrentPage }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Create New Task</h1>
-          <p className="text-gray-600">Post a new project for students to work on</p>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Create New Task</h1>
+          <p className="text-gray-600 dark:text-gray-300">Post a new project for students to work on</p>
         </div>
 
         {error && (
@@ -117,30 +117,30 @@ function MentorTaskCreate({ setCurrentPage }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Task Title *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Task Title *</label>
             <input
               type="text"
               name="title"
               value={taskData.title}
               onChange={handleChange}
               placeholder="e.g., Build a REST API with Node.js"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
               required
               disabled={isLoading}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Description *</label>
             <textarea
               name="description"
               value={taskData.description}
               onChange={handleChange}
               rows="5"
               placeholder="Describe what students need to build..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
               required
               disabled={isLoading}
             />
@@ -148,26 +148,26 @@ function MentorTaskCreate({ setCurrentPage }) {
 
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Deadline *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Deadline *</label>
               <input
                 type="date"
                 name="deadline"
                 value={taskData.deadline}
                 onChange={handleChange}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                 required
                 disabled={isLoading}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty Level</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Difficulty Level</label>
               <select
                 name="difficulty"
                 value={taskData.difficulty}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                 disabled={isLoading}
               >
                 <option value="Easy">Easy</option>
@@ -178,7 +178,7 @@ function MentorTaskCreate({ setCurrentPage }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
               Technology Tags (Max 5)
             </label>
             <div className="flex flex-wrap gap-2 mb-3">
@@ -206,7 +206,7 @@ function MentorTaskCreate({ setCurrentPage }) {
                   onChange={handleChange}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                   placeholder="e.g., React, Node.js"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                   disabled={isLoading}
                 />
                 <button
@@ -223,7 +223,7 @@ function MentorTaskCreate({ setCurrentPage }) {
 
           <div>
             <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-medium text-gray-700">Evaluation Rubric *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Evaluation Rubric *</label>
               <button
                 type="button"
                 onClick={handleAddRubricItem}
@@ -243,7 +243,7 @@ function MentorTaskCreate({ setCurrentPage }) {
                     value={item.criteria}
                     onChange={(e) => handleRubricChange(index, 'criteria', e.target.value)}
                     placeholder="Evaluation criteria"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                     required
                     disabled={isLoading}
                   />
@@ -253,7 +253,7 @@ function MentorTaskCreate({ setCurrentPage }) {
                     onChange={(e) => handleRubricChange(index, 'points', e.target.value)}
                     placeholder="Points"
                     min="0"
-                    className="w-24 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+                    className="w-24 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
                     required
                     disabled={isLoading}
                   />
@@ -271,9 +271,9 @@ function MentorTaskCreate({ setCurrentPage }) {
               ))}
             </div>
 
-            <div className="mt-4 p-3 bg-gray-100 rounded-lg flex items-center justify-between">
-              <span className="font-medium text-gray-700">Total Points:</span>
-              <span className="text-xl font-bold text-gray-800">{totalPoints}</span>
+            <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-between">
+              <span className="font-medium text-gray-700 dark:text-gray-200">Total Points:</span>
+              <span className="text-xl font-bold text-gray-800 dark:text-gray-100">{totalPoints}</span>
             </div>
           </div>
 
@@ -288,7 +288,7 @@ function MentorTaskCreate({ setCurrentPage }) {
             <button
               type="button"
               onClick={() => setCurrentPage('mentor-dashboard')}
-              className="flex-1 py-3 bg-white text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium"
+              className="flex-1 py-3 bg-white dark:bg-gray-800 text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium"
               disabled={isLoading}
             >
               Cancel

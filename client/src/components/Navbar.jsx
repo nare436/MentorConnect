@@ -1,4 +1,4 @@
-import { Menu, X, User, LogOut, Bell, Users, Sun, Moon } from 'lucide-react';
+import { Menu, X, User, LogOut, Bell, Users, Sun, Moon, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { logout, getNotifications } from '../utils/api';
 import { useTheme } from '../context/ThemeContext';
@@ -94,6 +94,13 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                       Alumni
                     </button>
                     <button 
+                      onClick={() => setCurrentPage('community')}
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white flex items-center gap-1 transition-colors"
+                    >
+                      <Globe size={16} />
+                      Community
+                    </button>
+                    <button 
                       onClick={() => setCurrentPage('student-profile')}
                       className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition-colors"
                     >
@@ -123,6 +130,13 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                     >
                       <Users size={16} />
                       Alumni
+                    </button>
+                    <button 
+                      onClick={() => setCurrentPage('community')}
+                      className="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white flex items-center gap-1 transition-colors"
+                    >
+                      <Globe size={16} />
+                      Community
                     </button>
                     <button 
                       onClick={() => setCurrentPage('mentor-profile')}
@@ -269,6 +283,16 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                     </button>
                     <button 
                       onClick={() => {
+                        setCurrentPage('community');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center gap-2 transition-colors"
+                    >
+                      <Globe size={16} />
+                      Community
+                    </button>
+                    <button 
+                      onClick={() => {
                         setCurrentPage('student-profile');
                         setMobileMenuOpen(false);
                       }}
@@ -308,6 +332,16 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                     >
                       <Users size={16} />
                       Alumni Network
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setCurrentPage('community');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-left px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center gap-2 transition-colors"
+                    >
+                      <Globe size={16} />
+                      Community
                     </button>
                     <button 
                       onClick={() => {

@@ -110,6 +110,11 @@ function StudentDashboard({ setCurrentPage, userData }) {
     }
   };
 
+  const isDeadlinePassed = (deadline) => {
+    if (!deadline) return false;
+    return new Date(deadline) < new Date();
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors">
@@ -129,11 +134,24 @@ function StudentDashboard({ setCurrentPage, userData }) {
       <div className="max-w-7xl mx-auto">
         
         {/* Welcome Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-            Welcome back, {userData?.name || 'Student'}!
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Here's what's happening with your projects</p>
+        <div className="mb-8 flex items-center gap-4">
+          {userData?.profilePicture ? (
+            <img 
+              src={userData.profilePicture} 
+              alt={userData.name} 
+              className="w-16 h-16 rounded-full object-cover shadow-sm border-2 border-gray-200 dark:border-gray-700"
+            />
+          ) : (
+            <div className="w-16 h-16 bg-gray-800 text-white rounded-full flex items-center justify-center text-2xl font-bold shadow-sm">
+              {(userData?.name || 'S').charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
+              Welcome back, {userData?.name || 'Student'}!
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Here's what's happening with your projects</p>
+          </div>
         </div>
 
         {/* Error Message */}
@@ -193,7 +211,7 @@ function StudentDashboard({ setCurrentPage, userData }) {
           <div className="md:col-span-2">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-900/30 p-6 transition-colors">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Active Tasks</h2>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">My Tasks</h2>
                 <button 
                   onClick={() => setCurrentPage('browse-tasks')}
                   className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
@@ -202,150 +220,177 @@ function StudentDashboard({ setCurrentPage, userData }) {
                 </button>
               </div>
 
-              <div className="space-y-4">
-                {dashboardData.activeTasks && dashboardData.activeTasks.length > 0 ? (
-                  dashboardData.activeTasks.map(submission => {
-                    const progress = getStatusProgress(submission.status);
-                    return (
-                      <div key={submission._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-800 dark:text-gray-100">
+              {(() => {
+                const activeList = dashboardData.activeTasks?.filter(sub => !isDeadlinePassed(sub.taskId?.deadline) && sub.taskId?.status === 'active') || [];
+                const closedList = dashboardData.activeTasks?.filter(sub => isDeadlinePassed(sub.taskId?.deadline) || sub.taskId?.status !== 'active') || [];
+                
+                const renderTaskCard = (submission, isClosed) => {
+                  const progress = getStatusProgress(submission.status);
+                  return (
+                    <div key={submission._id} className={`border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-gray-400 dark:hover:border-gray-500 transition-colors ${isClosed ? 'bg-gray-50 dark:bg-gray-800/50' : ''}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className={`font-semibold text-gray-800 dark:text-gray-100 ${isClosed ? 'line-through decoration-gray-400' : ''}`}>
                               {submission.taskId?.title || 'Task'}
                             </h3>
-                            <p className="text-sm text-gray-500 mt-1">
-                              Mentor:{' '}
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCurrentPage(`/profile/${submission.taskId?.mentorId?._id}`);
-                                }}
-                                className="text-blue-600 hover:underline font-medium"
-                              >
-                                {submission.taskId?.mentorId?.name || 'Mentor'}
-                              </button>
-                            </p>
+                            {isClosed && <span className="px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">Closed</span>}
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            submission.status === 'submitted' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : submission.status === 'reviewed'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {submission.status}
-                          </span>
-                        </div>
-                        
-                        {/* Progress Bar */}
-                        <div className="mt-3">
-                          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                            <span>{progress.label}</span>
-                            {submission.totalScore > 0 && (
-                              <span className="flex items-center gap-1 text-yellow-600 font-medium">
-                                <Star size={12} /> {submission.totalScore} pts
-                              </span>
-                            )}
-                          </div>
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div className={`${progress.color} h-2 rounded-full transition-all duration-500`} style={{ width: progress.width }}></div>
-                          </div>
-                        </div>
-                        
-                        {/* Team badge */}
-                        {submission.applyAs === 'team' && submission.teamId && (
-                          <div className="mt-2 flex items-center gap-1 text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded w-fit">
-                            <Users size={12} />
-                            Team: {submission.teamId?.name || 'Team Project'}
-                          </div>
-                        )}
-                        
-                        <div className="mt-3 flex gap-2 flex-wrap">
-                          {/* Submit Work button - only for in-progress tasks */}
-                          {submission.status === 'in-progress' && (
+                          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                            Mentor:{' '}
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setExpandedSubmitId(expandedSubmitId === submission._id ? null : submission._id);
-                                setSubmitGithubUrl(submission.githubUrl || '');
-                                setSubmitNotes('');
+                                setCurrentPage(`/profile/${submission.taskId?.mentorId?._id}`);
                               }}
-                              className="flex items-center gap-1 text-sm px-3 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 font-medium"
+                              className="text-blue-600 hover:underline font-medium flex items-center gap-1.5"
                             >
-                              <Github size={16} />
-                              Submit Work
-                              {expandedSubmitId === submission._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              {submission.taskId?.mentorId?.profilePicture ? (
+                                <img src={submission.taskId.mentorId.profilePicture} alt={submission.taskId.mentorId.name} className="w-5 h-5 rounded-full object-cover" />
+                              ) : null}
+                              {submission.taskId?.mentorId?.name || 'Mentor'}
                             </button>
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          submission.status === 'submitted' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : submission.status === 'reviewed'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {submission.status}
+                        </span>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                          <span>{progress.label}</span>
+                          {submission.totalScore > 0 && (
+                            <span className="flex items-center gap-1 text-yellow-600 font-medium">
+                              <Star size={12} /> {submission.totalScore} pts
+                            </span>
                           )}
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div className={`${progress.color} h-2 rounded-full transition-all duration-500`} style={{ width: progress.width }}></div>
+                        </div>
+                      </div>
+                      
+                      {/* Team badge */}
+                      {submission.applyAs === 'team' && submission.teamId && (
+                        <div className="mt-2 flex items-center gap-1 text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded w-fit">
+                          <Users size={12} />
+                          Team: {submission.teamId?.name || 'Team Project'}
+                        </div>
+                      )}
+                      
+                      <div className="mt-3 flex gap-2 flex-wrap">
+                        {/* Submit Work button - only for in-progress tasks */}
+                        {submission.status === 'in-progress' && !isClosed && (
                           <button 
-                            onClick={() => setActiveChatTaskId(submission.taskId._id)}
-                            className="flex items-center gap-1 text-sm px-3 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedSubmitId(expandedSubmitId === submission._id ? null : submission._id);
+                              setSubmitGithubUrl(submission.githubUrl || '');
+                              setSubmitNotes('');
+                            }}
+                            className="flex items-center gap-1 text-sm px-3 py-2 bg-green-100 text-green-800 rounded hover:bg-green-200 font-medium"
                           >
-                            <MessageSquare size={16} />
-                            Chat
+                            <Github size={16} />
+                            Submit Work
+                            {expandedSubmitId === submission._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
-                          <button 
-                            onClick={() => setCurrentPage(`/task/${submission.taskId._id}/details`)}
-                            className="flex-1 text-sm px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                          >
-                            View Details
+                        )}
+                        <button 
+                          onClick={() => setActiveChatTaskId(submission.taskId._id)}
+                          className="flex items-center gap-1 text-sm px-3 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                        >
+                          <MessageSquare size={16} />
+                          Chat
+                        </button>
+                        <button 
+                          onClick={() => setCurrentPage(`/task/${submission.taskId._id}/details`)}
+                          className="flex-1 text-sm px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        >
+                          View Details
+                        </button>
+                      </div>
+
+                      {/* Expandable Submit Form */}
+                      {expandedSubmitId === submission._id && submission.status === 'in-progress' && !isClosed && (
+                        <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                          <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-sm mb-3 flex items-center gap-2">
+                            <Github size={16} />
+                            Submit Your Work
+                          </h4>
+                          <input
+                            type="url"
+                            placeholder="GitHub Repository URL"
+                            value={submitGithubUrl}
+                            onChange={(e) => setSubmitGithubUrl(e.target.value)}
+                            className="w-full p-2 mb-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          />
+                          <textarea
+                            placeholder="Additional notes or demo URL (optional)"
+                            value={submitNotes}
+                            onChange={(e) => setSubmitNotes(e.target.value)}
+                            className="w-full p-2 mb-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm h-20 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setExpandedSubmitId(null)}
+                              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleSubmitWork(submission.taskId._id)}
+                              disabled={isSubmitting}
+                              className="px-4 py-1.5 bg-gray-800 dark:bg-gray-700 text-white rounded text-sm font-medium hover:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                            >
+                              {isSubmitting ? 'Submitting...' : 'Submit Final Work'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+
+                return (
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4 border-b pb-2">Active Tasks ({activeList.length})</h3>
+                      {activeList.length > 0 ? (
+                        <div className="space-y-4">
+                          {activeList.map(submission => renderTaskCard(submission, false))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+                          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <BookOpen size={20} />
+                          </div>
+                          <p className="text-gray-600 dark:text-gray-400">No active tasks right now.</p>
+                          <button onClick={() => setCurrentPage('browse-tasks')} className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                            Browse available tasks
                           </button>
                         </div>
+                      )}
+                    </div>
 
-                        {/* Expandable Submit Form */}
-                        {expandedSubmitId === submission._id && submission.status === 'in-progress' && (
-                          <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                            <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-sm mb-3 flex items-center gap-2">
-                              <Github size={16} />
-                              Submit Your Work
-                            </h4>
-                            <div className="space-y-3">
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">GitHub Repo / Collaboration Link *</label>
-                                <input
-                                  type="url"
-                                  value={submitGithubUrl}
-                                  onChange={(e) => setSubmitGithubUrl(e.target.value)}
-                                  placeholder="https://github.com/username/repo"
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800 dark:focus:border-gray-400 text-sm bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Notes (optional)</label>
-                                <textarea
-                                  value={submitNotes}
-                                  onChange={(e) => setSubmitNotes(e.target.value)}
-                                  placeholder="Any additional notes for the mentor..."
-                                  rows={2}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800 dark:focus:border-gray-400 text-sm bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100"
-                                />
-                              </div>
-                              <button
-                                onClick={() => handleSubmitWork(submission.taskId._id)}
-                                disabled={isSubmitting || !submitGithubUrl.trim()}
-                                className="w-full flex items-center justify-center gap-2 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
-                              >
-                                <Send size={16} />
-                                {isSubmitting ? 'Submitting...' : 'Submit for Review'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                    {closedList.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4 border-b pb-2">Closed / Past Tasks ({closedList.length})</h3>
+                        <div className="space-y-4 opacity-80">
+                          {closedList.map(submission => renderTaskCard(submission, true))}
+                        </div>
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No active tasks</p>
-                    <button 
-                      onClick={() => setCurrentPage('browse-tasks')}
-                      className="mt-4 px-6 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-                    >
-                      Browse Tasks
-                    </button>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
             </div>
           </div>
 

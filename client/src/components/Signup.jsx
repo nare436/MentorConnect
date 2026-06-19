@@ -46,6 +46,12 @@ function Signup({ setCurrentPage, onLogin }) {
       return;
     }
     
+    // Domain restriction for students
+    if (formData.role === 'student' && !formData.email.endsWith('@mnit.ac.in')) {
+      setError('Only MNIT students can register. Please use your @mnit.ac.in email.');
+      return;
+    }
+    
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
       return;
@@ -82,7 +88,7 @@ function Signup({ setCurrentPage, onLogin }) {
 
     try {
       // Step 1: Sign in with Google via Firebase
-      const googleResult = await signInWithGoogle();
+      const googleResult = await signInWithGoogle(formData.role);
       
       // Step 2: Send the Firebase token to our backend with the selected role
       const response = await googleAuth(googleResult.idToken, formData.role);

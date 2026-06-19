@@ -17,6 +17,7 @@ function StudentProfile({ setCurrentPage, userData }) {
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
+    profilePicture: '',
     bio: '',
     skills: [],
     education: '',
@@ -73,6 +74,7 @@ function StudentProfile({ setCurrentPage, userData }) {
         setProfileData({
           name: response.user.name || '',
           email: response.user.email || '',
+          profilePicture: response.user.profilePicture || '',
           bio: response.user.bio || '',
           skills: response.user.skills || [],
           education: response.user.education || '',
@@ -99,7 +101,20 @@ function StudentProfile({ setCurrentPage, userData }) {
     if (error) setError('');
     if (success) setSuccess('');
   };
-
+  // Handle file selection
+  const handleImageChange = (e) => {
+    if (e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData({
+          ...profileData,
+          profilePicture: reader.result
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   // Add new skill
   const handleAddSkill = () => {
     if (profileData.newSkill.trim()) {
@@ -160,22 +175,22 @@ function StudentProfile({ setCurrentPage, userData }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading profile...</p>
+          <p className="text-gray-600 dark:text-gray-300">Loading profile...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-5xl mx-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">My Profile</h1>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">My Profile</h1>
           <button
             onClick={() => setIsEditing(!isEditing)}
             className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
@@ -204,27 +219,48 @@ function StudentProfile({ setCurrentPage, userData }) {
           <div className="md:col-span-1 space-y-6">
             
             {/* Profile Card */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-900/30 p-6 transition-colors">
               <div className="text-center">
-                {/* Profile initial circle */}
-                <div className="w-24 h-24 mx-auto bg-gray-800 text-white rounded-full flex items-center justify-center text-3xl font-bold mb-4">
-                  {profileData.name.charAt(0).toUpperCase()}
-                </div>
-                
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="name"
-                    value={profileData.name}
-                    onChange={handleChange}
-                    className="text-xl font-bold text-gray-800 w-full text-center border border-gray-300 rounded px-2 py-1"
-                    disabled={isSaving}
+                {/* Profile initial circle or picture */}
+                {profileData.profilePicture ? (
+                  <img 
+                    src={profileData.profilePicture} 
+                    alt={profileData.name} 
+                    className="w-24 h-24 mx-auto rounded-full object-cover mb-4 shadow-md"
                   />
                 ) : (
-                  <h2 className="text-xl font-bold text-gray-800">{profileData.name}</h2>
+                  <div className="w-24 h-24 mx-auto bg-gray-800 dark:bg-gray-700 text-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-md transition-colors">
+                    {profileData.name.charAt(0).toUpperCase()}
+                  </div>
                 )}
                 
-                <div className="flex items-center justify-center gap-2 mt-2 text-gray-600">
+                {isEditing ? (
+                  <div className="space-y-2 mb-4">
+                    <input
+                      type="text"
+                      name="name"
+                      value={profileData.name}
+                      onChange={handleChange}
+                      className="text-xl font-bold text-gray-800 dark:text-gray-100 w-full text-center border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-gray-800 dark:focus:border-gray-400 bg-white dark:bg-gray-700 transition-colors"
+                      disabled={isSaving}
+                      placeholder="Your Name"
+                    />
+                    <div className="flex flex-col items-center gap-1">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Profile Picture</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="text-sm text-gray-800 dark:text-gray-100 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 transition-colors file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400"
+                        disabled={isSaving}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{profileData.name}</h2>
+                )}
+                
+                <div className="flex items-center justify-center gap-2 mt-2 text-gray-600 dark:text-gray-300">
                   <Mail size={16} />
                   <span className="text-sm">{profileData.email}</span>
                 </div>
@@ -233,14 +269,14 @@ function StudentProfile({ setCurrentPage, userData }) {
               {/* Social Links */}
               <div className="mt-6 space-y-3">
                 <div className="flex items-center gap-2">
-                  <Github size={18} className="text-gray-600" />
+                  <Github size={18} className="text-gray-600 dark:text-gray-300" />
                   {isEditing ? (
                     <input
                       type="text"
                       name="githubUrl"
                       value={profileData.githubUrl}
                       onChange={handleChange}
-                      className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                      className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
                       placeholder="GitHub URL"
                       disabled={isSaving}
                     />
@@ -252,14 +288,14 @@ function StudentProfile({ setCurrentPage, userData }) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Linkedin size={18} className="text-gray-600" />
+                  <Linkedin size={18} className="text-gray-600 dark:text-gray-300" />
                   {isEditing ? (
                     <input
                       type="text"
                       name="linkedinUrl"
                       value={profileData.linkedinUrl}
                       onChange={handleChange}
-                      className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                      className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
                       placeholder="LinkedIn URL"
                       disabled={isSaving}
                     />
@@ -273,18 +309,18 @@ function StudentProfile({ setCurrentPage, userData }) {
             </div>
 
             {/* Points & Rank Card */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Trophy className="text-yellow-500" size={22} />
-                <h3 className="text-lg font-bold text-gray-800">Points & Rank</h3>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Points & Rank</h3>
               </div>
               
               <div className="text-center mb-4">
                 <div className="inline-flex items-center gap-2">
                   <Star size={24} className="text-yellow-500" />
-                  <span className="text-3xl font-bold text-gray-800">{pointsData.totalPoints}</span>
+                  <span className="text-3xl font-bold text-gray-800 dark:text-gray-100">{pointsData.totalPoints}</span>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">Total Points Earned</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Total Points Earned</p>
               </div>
               
               {pointsData.rank > 0 && (
@@ -298,11 +334,11 @@ function StudentProfile({ setCurrentPage, userData }) {
               <div className="space-y-2">
                 {[100, 250, 500, 1000].map(milestone => (
                   <div key={milestone}>
-                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                    <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 mb-1">
                       <span>{milestone} pts milestone</span>
                       <span>{Math.min(100, Math.round((pointsData.totalPoints / milestone) * 100))}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                       <div 
                         className={`h-1.5 rounded-full transition-all ${
                           pointsData.totalPoints >= milestone ? 'bg-yellow-500' : 'bg-yellow-300'
@@ -316,34 +352,34 @@ function StudentProfile({ setCurrentPage, userData }) {
             </div>
 
             {/* Stats Card */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">My Impact</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">My Impact</h3>
               <div className="space-y-4">
                 <div>
-                  <p className="text-2xl font-bold text-gray-800">{profileData.stats?.tasksCompleted || 0}</p>
-                  <p className="text-sm text-gray-600">Tasks Completed</p>
+                  <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{profileData.stats?.tasksCompleted || 0}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Tasks Completed</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-800">{profileData.stats?.tasksActive || 0}</p>
-                  <p className="text-sm text-gray-600">Active Tasks</p>
+                  <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{profileData.stats?.tasksActive || 0}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Active Tasks</p>
                 </div>
               </div>
             </div>
 
             {/* Badges */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Award className="text-gray-600" size={20} />
-                <h3 className="text-lg font-bold text-gray-800">Badges</h3>
+                <Award className="text-gray-600 dark:text-gray-300" size={20} />
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Badges</h3>
               </div>
               
               <div className="space-y-3">
                 {badges.length > 0 ? (
                   badges.map(badge => (
-                    <div key={badge._id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div key={badge._id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                       <span className="text-2xl">{badge.icon || '🏆'}</span>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-800">{badge.name}</p>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{badge.name}</p>
                         <p className="text-xs text-gray-500">{badge.description || ''}</p>
                       </div>
                     </div>
@@ -359,47 +395,47 @@ function StudentProfile({ setCurrentPage, userData }) {
           <div className="md:col-span-2 space-y-6">
             
             {/* Bio */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">About Me</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">About Me</h3>
               {isEditing ? (
                 <textarea
                   name="bio"
                   value={profileData.bio}
                   onChange={handleChange}
                   rows="4"
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:border-gray-800"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3 focus:outline-none focus:border-gray-800"
                   placeholder="Tell us about yourself..."
                   disabled={isSaving}
                 />
               ) : (
-                <p className="text-gray-600">{profileData.bio || 'No bio added yet'}</p>
+                <p className="text-gray-600 dark:text-gray-300">{profileData.bio || 'No bio added yet'}</p>
               )}
             </div>
 
             {/* Education */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">Education</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Education</h3>
               {isEditing ? (
                 <input
                   type="text"
                   name="education"
                   value={profileData.education}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:border-gray-800"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3 focus:outline-none focus:border-gray-800"
                   placeholder="Your education background"
                   disabled={isSaving}
                 />
               ) : (
-                <p className="text-gray-600">{profileData.education || 'No education info added'}</p>
+                <p className="text-gray-600 dark:text-gray-300">{profileData.education || 'No education info added'}</p>
               )}
             </div>
 
             {/* Skills */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">Skills</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Skills</h3>
               <div className="flex flex-wrap gap-2">
                 {profileData.skills.map((skill, index) => (
-                  <span key={index} className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2">
+                  <span key={index} className="px-3 py-1 bg-gray-100 text-gray-800 dark:text-gray-100 rounded-full text-sm flex items-center gap-2">
                     {skill}
                     {isEditing && (
                       <button
@@ -425,7 +461,7 @@ function StudentProfile({ setCurrentPage, userData }) {
                     value={profileData.newSkill}
                     onChange={handleChange}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-gray-800"
+                    className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-gray-800"
                     placeholder="Add a skill"
                     disabled={isSaving}
                   />
@@ -441,10 +477,10 @@ function StudentProfile({ setCurrentPage, userData }) {
             </div>
 
             {/* Contribution Timeline */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <div className="flex items-center gap-2 mb-4">
-                <TrendingUp size={20} className="text-gray-600" />
-                <h3 className="text-lg font-bold text-gray-800">Contribution Timeline</h3>
+                <TrendingUp size={20} className="text-gray-600 dark:text-gray-300" />
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Contribution Timeline</h3>
               </div>
               
               {pointsData.breakdown.length > 0 ? (
@@ -457,7 +493,7 @@ function StudentProfile({ setCurrentPage, userData }) {
                           idx === 0 ? 'bg-green-500' : 'bg-gray-300'
                         }`}></div>
                         {idx < pointsData.breakdown.length - 1 && (
-                          <div className="w-0.5 h-full bg-gray-200 mt-1"></div>
+                          <div className="w-0.5 h-full bg-gray-200 dark:bg-gray-700 mt-1"></div>
                         )}
                       </div>
                       
@@ -465,7 +501,7 @@ function StudentProfile({ setCurrentPage, userData }) {
                       <div className="flex-1 pb-4">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h4 className="font-semibold text-gray-800">{entry.taskTitle}</h4>
+                            <h4 className="font-semibold text-gray-800 dark:text-gray-100">{entry.taskTitle}</h4>
                             <div className="flex items-center gap-2 mt-1">
                               <span className={`px-2 py-0.5 rounded text-xs font-medium ${getDifficultyColor(entry.difficulty)}`}>
                                 {entry.difficulty}
@@ -477,7 +513,7 @@ function StudentProfile({ setCurrentPage, userData }) {
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className="font-bold text-gray-800 flex items-center gap-1">
+                            <span className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1">
                               <Star size={14} className="text-yellow-500" />
                               {entry.earnedPoints}/{entry.maxPoints}
                             </span>
@@ -486,7 +522,7 @@ function StudentProfile({ setCurrentPage, userData }) {
                         
                         {/* Score bar */}
                         <div className="mt-2">
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                             <div 
                               className={`h-2 rounded-full transition-all ${
                                 getPointsPercentage(entry.earnedPoints, entry.maxPoints) >= 80 ? 'bg-green-500'

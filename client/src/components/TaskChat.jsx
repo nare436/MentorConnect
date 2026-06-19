@@ -8,7 +8,7 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
   const [newMessage, setNewMessage] = useState('');
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [isOpen, setIsOpen] = useState(inline); // Auto-open in inline mode
+  const [isOpen, setIsOpen] = useState(true); // Auto-open by default per user request
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef(null);
 
@@ -86,7 +86,7 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
   // Inline mode: renders as embedded panel
   if (inline) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 h-96 flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 h-96 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between bg-gray-800 text-white px-4 py-2">
           <div className="flex items-center gap-2">
@@ -100,7 +100,7 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50">
+        <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50 dark:bg-gray-900">
           {isLoading ? (
             <div className="text-center text-gray-500 py-8">
               <MessageCircle className="mx-auto mb-2" size={32} />
@@ -148,13 +148,13 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSendMessage} className="flex px-4 py-2 gap-2 border-t border-gray-200">
+        <form onSubmit={handleSendMessage} className="flex px-4 py-2 gap-2 border-t border-gray-200 dark:border-gray-700">
           <input
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
             disabled={!isConnected}
           />
           <button
@@ -186,7 +186,7 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="bg-white rounded-lg shadow-xl w-80 h-96 flex flex-col overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-80 h-96 flex flex-col overflow-hidden">
           
           {/* Header */}
           <div className="flex items-center justify-between bg-gray-800 text-white px-4 py-2">
@@ -203,7 +203,7 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50">
+          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50 dark:bg-gray-900">
             {isLoading ? (
               <div className="text-center text-gray-500 py-8">
                 <MessageCircle className="mx-auto mb-2" size={32} />
@@ -247,13 +247,13 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
           </div>
 
           {/* Input */}
-          <form onSubmit={handleSendMessage} className="flex px-4 py-2 gap-2 border-t border-gray-200">
+          <form onSubmit={handleSendMessage} className="flex px-4 py-2 gap-2 border-t border-gray-200 dark:border-gray-700">
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-800"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800"
               disabled={!isConnected}
             />
             <button

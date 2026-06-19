@@ -22,6 +22,7 @@ const notificationModel = require('./models/notification');
 const badgeModel = require('./models/badge');
 const teamChatModel = require('./models/teamChat');
 const alumniMessageModel = require('./models/alumniMessage');
+const postModel = require('./models/post');
 
 const app = express();
 const server = http.createServer(app);
@@ -46,8 +47,8 @@ const SALT_ROUNDS = 10;
 
 // Middleware
 app.set('view engine', 'ejs');
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
 
@@ -371,7 +372,8 @@ app.get('/verify-token', isLoggedIn, async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        profilePicture: user.profilePicture
       }
     });
   } catch (err) {
@@ -419,7 +421,7 @@ app.post('/student/profile/update', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Students only.' });
     }
     
-    const { name, bio, skills, education, githubUrl, linkedinUrl } = req.body;
+    const { name, bio, skills, education, githubUrl, linkedinUrl, profilePicture } = req.body;
     
     const user = await userModel.findByIdAndUpdate(
       req.user.id,
@@ -429,7 +431,8 @@ app.post('/student/profile/update', isLoggedIn, async (req, res) => {
         skills,
         education,
         githubUrl,
-        linkedinUrl
+        linkedinUrl,
+        profilePicture
       },
       { new: true }
     ).select('-password');
@@ -452,7 +455,7 @@ app.get('/student/dashboard', isLoggedIn, async (req, res) => {
       .find({ studentId: req.user.id })
       .populate({
         path: 'taskId',
-        populate: { path: 'mentorId', select: 'name company' }
+        populate: { path: 'mentorId', select: 'name company profilePicture' }
       })
       .populate('teamId');
     
@@ -464,7 +467,7 @@ app.get('/student/dashboard', isLoggedIn, async (req, res) => {
         .find({ teamId: userTeam._id, studentId: { $ne: req.user.id } })
         .populate({
           path: 'taskId',
-          populate: { path: 'mentorId', select: 'name company' }
+          populate: { path: 'mentorId', select: 'name company profilePicture' }
         })
         .populate('teamId');
     }
@@ -491,12 +494,14 @@ app.get('/student/dashboard', isLoggedIn, async (req, res) => {
     const completedTasks = allSubmissions.filter(s => s.status === 'reviewed').length;
     const activeTasks = allSubmissions.filter(s => ['in-progress', 'submitted', 'pending_approval'].includes(s.status)).length;
     
+    const user = await userModel.findById(req.user.id).select('badges');
+    
     res.json({
       success: true,
       stats: {
         tasksCompleted: completedTasks,
         tasksActive: activeTasks,
-        badgesEarned: 3,
+        badgesEarned: user?.badges?.length || 0,
         teamMembers: userTeam?.members?.length || 0
       },
       activeTasks: allSubmissions
@@ -513,7 +518,21 @@ app.get('/student/dashboard', isLoggedIn, async (req, res) => {
 app.get('/tasks', isLoggedIn, async (req, res) => {
   try {
     const tasks = await taskModel.find({ status: 'active' })
-      .populate('mentorId', 'name company');
+      .populate('mentorId', 'name company profilePicture');
+    res.json({ success: true, tasks });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
+
+// Explore tasks from all mentors (read-only browse)
+app.get('/tasks/explore', isLoggedIn, async (req, res) => {
+  try {
+    const tasks = await taskModel
+      .find({ status: 'active' })
+      .populate('mentorId', 'name email company expertise profilePicture')
+      .sort({ createdAt: -1 });
+    
     res.json({ success: true, tasks });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch tasks' });
@@ -524,7 +543,7 @@ app.get('/tasks', isLoggedIn, async (req, res) => {
 app.get('/tasks/:id', isLoggedIn, async (req, res) => {
   try {
     const task = await taskModel.findById(req.params.id)
-      .populate('mentorId', 'name company jobRole');
+      .populate('mentorId', 'name company jobRole profilePicture');
     
     if (!task) {
       return res.status(404).json({ error: 'Task not found' });
@@ -598,26 +617,22 @@ app.post('/tasks/:id/apply', isLoggedIn, async (req, res) => {
         return res.status(400).json({ error: 'A team member has already applied to this task' });
       }
       
-      // Create submission for each team member
-      const submissions = [];
-      for (const member of team.members) {
-        const sub = await submissionModel.create({
-          taskId,
-          studentId: member._id,
-          teamId: team._id,
-          applicantGithubUrl: githubUrl,
-          applyAs: 'team',
-          status: 'pending_approval'
-        });
-        submissions.push(sub);
-      }
+      // Create a SINGLE submission for the team (linked to leader)
+      const submission = await submissionModel.create({
+        taskId,
+        studentId: req.user.id,
+        teamId: team._id,
+        applicantGithubUrl: githubUrl,
+        applyAs: 'team',
+        status: 'pending_approval'
+      });
       
       // Update task applicants count
       await taskModel.findByIdAndUpdate(taskId, {
         $inc: { applicants: 1 }
       });
       
-      return res.json({ success: true, message: `Application submitted for team "${team.name}" (${team.members.length} members)`, submission: submissions[0] });
+      return res.json({ success: true, message: `Application submitted for team "${team.name}" (${team.members.length} members)`, submission });
     }
     
     // Individual application
@@ -650,8 +665,17 @@ app.post('/tasks/:id/submit', isLoggedIn, async (req, res) => {
     
     const { githubUrl, demoUrl, notes } = req.body;
     
+    // Allow any team member to submit on behalf of the team
+    const userTeam = await teamModel.findOne({ members: req.user.id });
+    const query = { taskId: req.params.id };
+    if (userTeam) {
+      query.$or = [{ studentId: req.user.id }, { teamId: userTeam._id }];
+    } else {
+      query.studentId = req.user.id;
+    }
+    
     const submission = await submissionModel.findOneAndUpdate(
-      { taskId: req.params.id, studentId: req.user.id },
+      query,
       {
         githubUrl,
         demoUrl,
@@ -944,7 +968,10 @@ app.get('/team/my-team', isLoggedIn, async (req, res) => {
       return res.json({ success: true, team: null, message: 'No team found' });
     }
     
-    res.json({ success: true, team });
+    const leaderIdStr = team.leaderId?._id?.toString() || team.leaderId?.toString();
+    const isLeader = leaderIdStr === req.user.id;
+    
+    res.json({ success: true, team, isLeader });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch team' });
   }
@@ -1035,11 +1062,11 @@ app.post('/mentor/profile/update', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Mentors only.' });
     }
     
-    const { name, bio, company, jobRole, expertise, yearsOfExperience } = req.body;
+    const { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture } = req.body;
     
     const user = await userModel.findByIdAndUpdate(
       req.user.id,
-      { name, bio, company, jobRole, expertise, yearsOfExperience },
+      { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture },
       { new: true }
     ).select('-password');
     
@@ -1115,11 +1142,11 @@ app.get('/mentor/task/:taskId/details', isLoggedIn, async (req, res) => {
     // Get all submissions for this task
     const submissions = await submissionModel
       .find({ taskId: task._id })
-      .populate('studentId', 'name email skills education githubUrl totalPoints')
+      .populate('studentId', 'name email skills education githubUrl totalPoints profilePicture')
       .populate({
         path: 'teamId',
         select: 'name members',
-        populate: { path: 'members', select: 'name email' }
+        populate: { path: 'members', select: 'name email profilePicture' }
       })
       .sort({ createdAt: -1 });
     
@@ -1163,20 +1190,6 @@ app.post('/mentor/task/:taskId/toggle-applications', isLoggedIn, async (req, res
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to toggle applications' });
-  }
-});
-
-// Explore tasks from all mentors (read-only browse)
-app.get('/tasks/explore', isLoggedIn, async (req, res) => {
-  try {
-    const tasks = await taskModel
-      .find({ status: 'active' })
-      .populate('mentorId', 'name email company expertise')
-      .sort({ createdAt: -1 });
-    
-    res.json({ success: true, tasks });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch tasks' });
   }
 });
 
@@ -1454,7 +1467,7 @@ app.get('/leaderboard', isLoggedIn, async (req, res) => {
   try {
     const students = await userModel
       .find({ role: 'student', totalPoints: { $gt: 0 } })
-      .select('name email education skills totalPoints')
+      .select('name email education skills totalPoints profilePicture')
       .sort({ totalPoints: -1 })
       .limit(50);
 
@@ -1594,6 +1607,47 @@ app.post('/mentor/evaluate/:submissionId', isLoggedIn, async (req, res) => {
       }
     }
     
+    // --- Badge Auto-Awarding Logic ---
+    const studentUser = await userModel.findById(submission.studentId);
+    if (studentUser) {
+      const completedCount = await submissionModel.countDocuments({
+        studentId: studentUser._id,
+        status: 'reviewed'
+      });
+      
+      const newBadges = [];
+      const awardBadge = async (name, description, icon) => {
+        let badge = await badgeModel.findOne({ name });
+        if (!badge) {
+          badge = await badgeModel.create({ name, description, icon });
+        }
+        if (!studentUser.badges.includes(badge._id)) {
+          studentUser.badges.push(badge._id);
+          newBadges.push(badge.name);
+        }
+      };
+
+      if (completedCount >= 1) await awardBadge('First Steps', 'Completed your first task', 'star');
+      if (completedCount >= 3) await awardBadge('Rising Star', 'Completed 3 tasks', 'flame');
+      if (completedCount >= 5) await awardBadge('Task Master', 'Completed 5 tasks', 'trophy');
+      if (studentUser.totalPoints >= 100) await awardBadge('Century Club', 'Earned 100+ points', 'award');
+      if (studentUser.totalPoints >= 500) await awardBadge('Point Prodigy', 'Earned 500+ points', 'crown');
+      
+      if (newBadges.length > 0) {
+        await studentUser.save();
+        for (const bName of newBadges) {
+          await notificationModel.create({
+            userId: studentUser._id,
+            type: 'badge_earned',
+            title: 'New Badge Earned!',
+            message: `Congratulations! You've earned the "${bName}" badge.`,
+            isRead: false
+          });
+        }
+      }
+    }
+    // ---------------------------------
+    
     // Notify the student
     await notificationModel.create({
       userId: submission.studentId,
@@ -1653,9 +1707,17 @@ app.post('/auth/google', async (req, res) => {
     
     if (user) {
       // Existing user - update Google ID if not set
+      let modified = false;
       if (!user.googleId) {
         user.googleId = uid;
         user.authProvider = user.authProvider === 'local' ? 'local' : 'google';
+        modified = true;
+      }
+      if (picture && !user.profilePicture) {
+        user.profilePicture = picture;
+        modified = true;
+      }
+      if (modified) {
         await user.save();
       }
     } else {
@@ -1668,6 +1730,7 @@ app.post('/auth/google', async (req, res) => {
         googleId: uid,
         authProvider: 'google',
         role: userRole,
+        profilePicture: picture || '',
         bio: '',
         skills: [],
         education: '',
@@ -1904,6 +1967,102 @@ app.get('/alumni/conversations', isLoggedIn, async (req, res) => {
   }
 });
 
+/* ---------------- COMMUNITY FEED ROUTES ---------------- */
+
+// Get all posts
+app.get('/community/posts', isLoggedIn, async (req, res) => {
+  try {
+    const posts = await postModel
+      .find()
+      .populate('authorId', 'name email profilePicture role company jobRole education')
+      .populate('comments.userId', 'name profilePicture')
+      .sort({ createdAt: -1 });
+    
+    res.json({ success: true, posts });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+// Create a new post
+app.post('/community/posts', isLoggedIn, async (req, res) => {
+  try {
+    const { content, image, codeSnippet, category } = req.body;
+    
+    if (!content && !image && !codeSnippet) {
+      return res.status(400).json({ error: 'Post must contain some content' });
+    }
+    
+    const newPost = await postModel.create({
+      authorId: req.user.id,
+      content,
+      image,
+      codeSnippet,
+      category: category || 'General'
+    });
+    
+    const populatedPost = await postModel.findById(newPost._id)
+      .populate('authorId', 'name email profilePicture role company jobRole education');
+      
+    res.json({ success: true, post: populatedPost });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create post' });
+  }
+});
+
+// Like/Unlike a post
+app.post('/community/posts/:id/like', isLoggedIn, async (req, res) => {
+  try {
+    const post = await postModel.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    const index = post.likes.indexOf(req.user.id);
+    if (index === -1) {
+      post.likes.push(req.user.id); // Like
+    } else {
+      post.likes.splice(index, 1); // Unlike
+    }
+    
+    await post.save();
+    res.json({ success: true, likes: post.likes });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to toggle like' });
+  }
+});
+
+// Comment on a post
+app.post('/community/posts/:id/comment', isLoggedIn, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: 'Comment text is required' });
+    }
+    
+    const post = await postModel.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    post.comments.push({
+      userId: req.user.id,
+      text: text.trim()
+    });
+    
+    await post.save();
+    
+    // Return populated post to update UI
+    const updatedPost = await postModel.findById(post._id)
+      .populate('authorId', 'name email profilePicture role company jobRole education')
+      .populate('comments.userId', 'name profilePicture');
+      
+    res.json({ success: true, post: updatedPost });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add comment' });
+  }
+});
+
 // Start server with Socket.io
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
@@ -1913,4 +2072,4 @@ server.listen(PORT, () => {
   console.log(`💬 Socket.io chat enabled`);
   console.log(`🔥 Firebase Google Auth enabled`);
   console.log(`📡 CORS enabled for: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-});
+});
