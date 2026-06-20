@@ -26,9 +26,9 @@ export const signInWithGoogle = async (role = 'student') => {
     
     // Domain restriction for students
     const email = result.user.email;
-    if (role === 'student' && !email.endsWith('@mnit.ac.in')) {
+    if (role === 'student' && !email.endsWith('@mnnit.ac.in')) {
       await signOut(auth);
-      throw new Error('Only MNIT students can register. Please use your @mnit.ac.in email.');
+      throw new Error('Only MNNIT students can register. Please use your @mnnit.ac.in email.');
     }
 
     // Get the Firebase ID token to send to our backend

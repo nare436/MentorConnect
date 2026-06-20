@@ -10,6 +10,7 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const http = require('http');
 const socketIO = require('socket.io');
+const mongoose = require('mongoose');
 
 // Import models
 const userModel = require('./models/user');
@@ -1825,6 +1826,27 @@ app.get('/profile/:id', isLoggedIn, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch public profile' });
   }
 });
+
+// Get user's top posts (ordered by likes)
+app.get('/profile/:id/top-posts', isLoggedIn, async (req, res) => {
+  try {
+    const posts = await postModel.aggregate([
+      { $match: { authorId: new mongoose.Types.ObjectId(req.params.id) } },
+      { $addFields: { likesCount: { $size: { $ifNull: ["$likes", []] } } } },
+      { $sort: { likesCount: -1, createdAt: -1 } },
+      { $limit: 5 }
+    ]);
+    
+    // Populate author info if needed, though we already have it from profile
+    await postModel.populate(posts, { path: 'authorId', select: 'name profilePicture role company jobRole education' });
+    
+    res.json({ success: true, posts });
+  } catch (err) {
+    console.error('Failed to fetch top posts:', err);
+    res.status(500).json({ error: 'Failed to fetch top posts' });
+  }
+});
+
 // ========== ALUMNI NETWORK APIs ==========
 
 // Get alumni directory (all mentors)
@@ -2008,6 +2030,24 @@ app.get('/community/posts', isLoggedIn, async (req, res) => {
   }
 });
 
+// Get single post by ID
+app.get('/community/posts/:id', isLoggedIn, async (req, res) => {
+  try {
+    const post = await postModel.findById(req.params.id)
+      .populate('authorId', 'name email profilePicture role company jobRole education')
+      .populate('comments.userId', 'name profilePicture');
+      
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    res.json({ success: true, post });
+  } catch (err) {
+    console.error('Error fetching post:', err);
+    res.status(500).json({ error: 'Failed to fetch post' });
+  }
+});
+
 // Create a new post
 app.post('/community/posts', isLoggedIn, async (req, res) => {
   try {
@@ -2085,6 +2125,61 @@ app.post('/community/posts/:id/comment', isLoggedIn, async (req, res) => {
     res.json({ success: true, post: updatedPost });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add comment' });
+  }
+});
+
+// Delete a post
+app.delete('/community/posts/:id', isLoggedIn, async (req, res) => {
+  try {
+    const post = await postModel.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    // Check if the current user is the author
+    if (post.authorId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized to delete this post' });
+    }
+    
+    await postModel.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Post deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting post:', err);
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
+// Delete a comment
+app.delete('/community/posts/:postId/comments/:commentId', isLoggedIn, async (req, res) => {
+  try {
+    const post = await postModel.findById(req.params.postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    // Allow if user is the comment author or the post author
+    if (comment.userId.toString() !== req.user.id && post.authorId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized to delete this comment' });
+    }
+    
+    // Remove the comment
+    post.comments.pull(req.params.commentId);
+    await post.save();
+    
+    // Return populated post
+    const updatedPost = await postModel.findById(post._id)
+      .populate('authorId', 'name email profilePicture role company jobRole education')
+      .populate('comments.userId', 'name profilePicture');
+      
+    res.json({ success: true, post: updatedPost });
+  } catch (err) {
+    console.error('Error deleting comment:', err);
+    res.status(500).json({ error: 'Failed to delete comment' });
   }
 });
 

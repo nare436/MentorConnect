@@ -348,4 +348,20 @@ export const commentOnPost = async (postId, text) => {
     method: 'POST',
     body: JSON.stringify({ text }),
   });
+};
+
+export const getTopPosts = async (userId) => {
+  return apiCall(`/profile/${userId}/top-posts`);
+};
+
+export const getPostById = async (postId) => {
+  return apiCall(`/community/posts/${postId}`);
+};
+
+export const deleteCommunityPost = async (postId) => {
+  return apiCall(`/community/posts/${postId}`, { method: 'DELETE' });
+};
+
+export const deleteComment = async (postId, commentId) => {
+  return apiCall(`/community/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
 };

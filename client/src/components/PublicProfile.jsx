@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Mail, Github, Linkedin, Award, Users, CheckCircle, Clock } from 'lucide-react';
-import { getPublicProfile } from '../utils/api';
+import { Mail, Github, Linkedin, Award, Users, CheckCircle, Clock, ThumbsUp, MessageSquare } from 'lucide-react';
+import { getPublicProfile, getTopPosts } from '../utils/api';
 
 function PublicProfile() {
   const { id } = useParams();
@@ -9,6 +9,7 @@ function PublicProfile() {
   const [profileData, setProfileData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [topPosts, setTopPosts] = useState([]);
 
   useEffect(() => {
     if (id) {
@@ -22,6 +23,10 @@ function PublicProfile() {
       const response = await getPublicProfile(id);
       if (response.success) {
         setProfileData(response);
+      }
+      const postsResponse = await getTopPosts(id);
+      if (postsResponse.success) {
+        setTopPosts(postsResponse.posts || []);
       }
     } catch (err) {
       setError('Failed to load profile');
@@ -172,6 +177,37 @@ function PublicProfile() {
                   ) : (
                     <span className="text-gray-500 text-sm">No skills listed</span>
                   )}
+                </div>
+              </div>
+            )}
+            
+            {/* Top Posts Section */}
+            {topPosts.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Top Posts</h3>
+                <div className="space-y-4">
+                  {topPosts.map(post => (
+                    <div 
+                      key={post._id} 
+                      onClick={() => navigate(`/post/${post._id}`)}
+                      className="border border-gray-100 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          {post.category}
+                        </span>
+                        <div className="flex items-center gap-3 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <ThumbsUp size={14} /> {post.likes?.length || 0}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MessageSquare size={14} /> {post.comments?.length || 0}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 text-sm line-clamp-3">{post.content}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

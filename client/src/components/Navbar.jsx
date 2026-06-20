@@ -58,7 +58,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
             className="text-xl font-bold text-gray-800 dark:text-gray-100 cursor-pointer"
             onClick={() => setCurrentPage(isLoggedIn ? (userRole === 'student' ? 'student-dashboard' : 'mentor-dashboard') : 'home')}
           >
-            Obsidian Circle
+            MentorConnect
           </div>
 
           {/* Desktop Navigation Links */}

@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-circle-backend",
+  "name": "mentorconnect-backend",
   "version": "1.0.0",
-  "description": "Backend for The Obsidian Circle mentorship platform",
+  "description": "Backend for the MentorConnect platform",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

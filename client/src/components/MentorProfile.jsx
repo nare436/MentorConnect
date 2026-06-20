@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Mail, Briefcase, Building, Edit2 } from 'lucide-react';
-import { getMentorProfile, updateMentorProfile } from '../utils/api';
+import { useNavigate } from 'react-router-dom';
+import { Mail, Briefcase, Building, Edit2, ThumbsUp, MessageSquare } from 'lucide-react';
+import { getMentorProfile, updateMentorProfile, getTopPosts } from '../utils/api';
 
 // Mentor Profile Component with backend integration
 function MentorProfile({ setCurrentPage, userData }) {
+  const navigate = useNavigate();
   // State for edit mode
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,6 +24,7 @@ function MentorProfile({ setCurrentPage, userData }) {
     expertise: [],
     yearsOfExperience: '',
     newExpertise: '',
+    topPosts: [],
     stats: {
       totalTasks: 0,
       teamsmentored: 0,
@@ -48,8 +51,20 @@ function MentorProfile({ setCurrentPage, userData }) {
           expertise: response.user.expertise || [],
           yearsOfExperience: response.user.yearsOfExperience || '',
           newExpertise: '',
-          stats: response.stats || { totalTasks: 0, teamsmentored: 0, studentsHelped: 0 }
+          stats: response.stats || { totalTasks: 0, teamsmentored: 0, studentsHelped: 0 },
+          topPosts: []
         });
+        
+        // Fetch top posts
+        if (response.user && response.user._id) {
+          const postsRes = await getTopPosts(response.user._id);
+          if (postsRes.success) {
+            setProfileData(prev => ({
+              ...prev,
+              topPosts: postsRes.posts || []
+            }));
+          }
+        }
       }
     } catch (err) {
       setError('Failed to load profile');
@@ -377,6 +392,37 @@ function MentorProfile({ setCurrentPage, userData }) {
               >
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
+            )}
+
+            {/* Top Posts Section */}
+            {profileData.topPosts?.length > 0 && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">My Top Posts</h3>
+                <div className="space-y-4">
+                  {profileData.topPosts.map(post => (
+                    <div 
+                      key={post._id} 
+                      onClick={() => navigate(`/post/${post._id}`)}
+                      className="border border-gray-100 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded-full">
+                          {post.category}
+                        </span>
+                        <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <ThumbsUp size={14} /> {post.likes?.length || 0}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MessageSquare size={14} /> {post.comments?.length || 0}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 dark:text-gray-300 text-sm line-clamp-3">{post.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>

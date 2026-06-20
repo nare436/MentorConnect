@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getCommunityPosts, createCommunityPost, likePost, commentOnPost } from '../utils/api';
-import { MessageSquare, Heart, Share2, Code, Send, Filter, Clock } from 'lucide-react';
+import { getCommunityPosts, createCommunityPost, likePost, commentOnPost, deleteCommunityPost, deleteComment as apiDeleteComment } from '../utils/api';
+import { MessageSquare, Heart, Share2, Code, Send, Filter, Clock, Trash2 } from 'lucide-react';
 
 export default function CommunityFeed({ userData }) {
   const [posts, setPosts] = useState([]);
@@ -96,10 +96,35 @@ export default function CommunityFeed({ userData }) {
       if (response.success) {
         setPosts(posts.map(p => p._id === postId ? response.post : p));
         setCommentText('');
-        setActiveCommentPostId(null);
       }
     } catch (err) {
       console.error('Failed to comment', err);
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Are you sure you want to delete this post?')) return;
+    try {
+      const response = await deleteCommunityPost(postId);
+      if (response.success) {
+        setPosts(posts.filter(p => p._id !== postId));
+      }
+    } catch (err) {
+      console.error('Failed to delete post', err);
+      alert('Failed to delete post');
+    }
+  };
+
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      const response = await apiDeleteComment(postId, commentId);
+      if (response.success) {
+        setPosts(posts.map(p => p._id === postId ? response.post : p));
+      }
+    } catch (err) {
+      console.error('Failed to delete comment', err);
+      alert('Failed to delete comment');
     }
   };
 
@@ -264,9 +289,20 @@ export default function CommunityFeed({ userData }) {
                         </p>
                       </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getCategoryColor(post.category)}`}>
-                      {post.category}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {userData?.id === post.authorId?._id && (
+                        <button 
+                          onClick={() => handleDeletePost(post._id)}
+                          className="text-gray-400 hover:text-red-500 transition-colors"
+                          title="Delete Post"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getCategoryColor(post.category)}`}>
+                        {post.category}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Post Content */}
@@ -352,7 +388,18 @@ export default function CommunityFeed({ userData }) {
                             <div className="flex-1 bg-white dark:bg-gray-800 p-3 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 dark:border-gray-700">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{comment.userId?.name || 'User'}</span>
-                                <span className="text-xs text-gray-400">{formatTime(comment.createdAt)}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs text-gray-400">{formatTime(comment.createdAt)}</span>
+                                  {(userData?.id === comment.userId?._id || userData?.id === post.authorId?._id) && (
+                                    <button 
+                                      onClick={() => handleDeleteComment(post._id, comment._id)}
+                                      className="text-gray-400 hover:text-red-500 transition-colors"
+                                      title="Delete Comment"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <p className="text-sm text-gray-700 dark:text-gray-300">{comment.text}</p>
                             </div>

@@ -4,13 +4,13 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Get MongoDB URI from environment variable or use default
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/obsidian_circle';
-    
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/mentor_connect';
+
     await mongoose.connect(mongoURI);
-    
+
     console.log(' MongoDB Connected Successfully');
     console.log(` Database: ${mongoose.connection.name}`);
-    
+
   } catch (err) {
     console.error(' MongoDB Connection Error:', err.message);
     process.exit(1); // Exit process with failure

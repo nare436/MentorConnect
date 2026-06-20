@@ -23,6 +23,7 @@ import TaskDetail from './components/TaskDetail';
 import PublicProfile from './components/PublicProfile';
 import AlumniNetwork from './components/AlumniNetwork';
 import CommunityFeed from './components/CommunityFeed';
+import PostDetails from './components/PostDetails';
 
 /* ----------------- HomePage (keeps your Tailwind & props) ----------------- */
 function HomePage({ setCurrentPage }) {
@@ -32,7 +33,7 @@ function HomePage({ setCurrentPage }) {
       <div className="max-w-6xl mx-auto px-4 py-20">
         <div className="text-center">
           <h1 className="text-5xl font-bold text-gray-800 dark:text-gray-100 mb-6">
-            The Obsidian Circle
+            MentorConnect
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
             Connect with alumni mentors, work on real-world projects, and build your career
@@ -270,6 +271,7 @@ function AppInner() {
           <Route path="/mentor/evaluation" element={<MentorEvaluation setCurrentPage={setCurrentPage} />} />
           <Route path="/alumni" element={isLoggedIn ? <AlumniNetwork setCurrentPage={setCurrentPage} userData={userData} /> : <Navigate to="/login" />} />
           <Route path="/community" element={isLoggedIn ? <CommunityFeed userData={userData} /> : <Navigate to="/login" />} />
+          <Route path="/post/:id" element={isLoggedIn ? <PostDetails userData={userData} /> : <Navigate to="/login" />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" />} />
