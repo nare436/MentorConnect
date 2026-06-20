@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Mail, Lock, User, Github } from 'lucide-react';
-import { signup, googleAuth } from '../utils/api';
+import { signup, sendOtp, googleAuth } from '../utils/api';
 import { signInWithGoogle } from '../utils/firebase';
 
 // Signup component with backend integration + Google Auth
@@ -12,8 +12,11 @@ function Signup({ setCurrentPage, onLogin }) {
     password: '',
     confirmPassword: '',
     role: 'student',
-    githubUsername: ''
+    githubUsername: '',
+    otp: ''
   });
+
+  const [step, setStep] = useState(1);
 
   // Loading state
   const [isLoading, setIsLoading] = useState(false);
@@ -57,25 +60,48 @@ function Signup({ setCurrentPage, onLogin }) {
       return;
     }
 
-    // Set loading state
     setIsLoading(true);
 
     try {
-      // Call the signup API
-      const response = await signup(formData);
+      if (step === 1) {
+        // Step 1: Request OTP
+        const response = await sendOtp(formData.email, formData.role);
+        if (response.success) {
+          alert('OTP sent to your email! Please check your inbox.');
+          setStep(2);
+        }
+      } else {
+        // Step 2: Verify OTP and actual Signup
+        const response = await signup(formData);
 
-      if (response.success) {
-        // If onLogin is provided, auto-login after signup
-        if (onLogin) {
-          onLogin(response.user.role, response.user);
-        } else {
-          alert('Signup successful! Please login.');
-          setCurrentPage('login');
+        if (response.success) {
+          // If onLogin is provided, auto-login after signup
+          if (onLogin) {
+            onLogin(response.user.role, response.user);
+          } else {
+            alert('Signup successful! Please login.');
+            setCurrentPage('login');
+          }
         }
       }
     } catch (err) {
       // Handle error
       setError(err.message || 'Signup failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await sendOtp(formData.email, formData.role);
+      if (response.success) {
+        alert('A new OTP has been sent to your email.');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to resend OTP.');
     } finally {
       setIsLoading(false);
     }
@@ -179,8 +205,9 @@ function Signup({ setCurrentPage, onLogin }) {
 
         {/* Signup Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* Name Input */}
+          {step === 1 ? (
+            <>
+              {/* Name Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Full Name
@@ -285,8 +312,60 @@ function Signup({ setCurrentPage, onLogin }) {
             className="w-full py-3 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             disabled={isLoading}
           >
-            {isLoading ? 'Creating Account...' : 'Sign Up'}
+            {isLoading ? 'Processing...' : 'Continue'}
           </button>
+            </>
+          ) : (
+            <>
+              {/* OTP Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Enter OTP sent to {formData.email}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    name="otp"
+                    value={formData.otp}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-gray-800 dark:focus:border-gray-400 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors"
+                    placeholder="123456"
+                    required
+                    maxLength="6"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center text-sm">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-300"
+                  disabled={isLoading}
+                >
+                  &larr; Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  className="text-gray-800 dark:text-gray-200 hover:underline"
+                  disabled={isLoading}
+                >
+                  Resend OTP
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Verifying...' : 'Verify & Sign Up'}
+              </button>
+            </>
+          )}
         </form>
 
         {/* Login Link */}

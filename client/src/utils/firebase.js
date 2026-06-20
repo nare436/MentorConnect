@@ -23,7 +23,6 @@ const googleProvider = new GoogleAuthProvider();
 export const signInWithGoogle = async (role = 'student') => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    
     // Domain restriction for students
     const email = result.user.email;
     if (role === 'student' && !email.endsWith('@mnnit.ac.in')) {

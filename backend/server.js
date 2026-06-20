@@ -24,6 +24,8 @@ const badgeModel = require('./models/badge');
 const teamChatModel = require('./models/teamChat');
 const alumniMessageModel = require('./models/alumniMessage');
 const postModel = require('./models/post');
+const otpModel = require('./models/otp');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const server = http.createServer(app);
@@ -238,11 +240,78 @@ io.on('connection', (socket) => {
 
 // ========== AUTHENTICATION ROUTES ==========
 
-// Signup route with bcrypt and email validation
+// Nodemailer transport setup for real emails via Gmail
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+// Route to generate and send OTP
+app.post('/send-otp', async (req, res) => {
+  try {
+    const { email, role } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Validate email domain
+    const emailValidation = validateEmail(email, role);
+    if (!emailValidation.valid) {
+      return res.status(400).json({ error: emailValidation.error });
+    }
+
+    // Check if user already exists
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists with this email' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Delete any existing OTP for this email
+    await otpModel.deleteMany({ email });
+
+    // Save new OTP to database
+    await otpModel.create({ email, otp });
+
+    // Send email via Nodemailer
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const mailOptions = {
+        from: `"MentorConnect" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'Your OTP for MentorConnect Signup',
+        text: `Your OTP for signup is: ${otp}. It is valid for 10 minutes.`,
+        html: `<p>Your OTP for signup is: <b>${otp}</b></p><p>It is valid for 10 minutes.</p>`
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`OTP successfully sent to ${email}`);
+    } else {
+      console.warn('WARNING: EMAIL_USER or EMAIL_PASS is not set in .env. OTP was generated but not sent via email.');
+      console.log(`[DEV MODE] The OTP for ${email} is: ${otp}`);
+    }
+
+    res.json({ success: true, message: 'OTP sent to your email' });
+  } catch (err) {
+    console.error('Send OTP error:', err);
+    res.status(500).json({ error: 'Failed to send OTP: ' + err.message });
+  }
+});
+
+// Signup route with bcrypt, email, and OTP validation
 app.post('/signup', async (req, res) => {
   try {
-    const { name, email, password, role, githubUsername } = req.body;
+    const { name, email, password, role, githubUsername, otp } = req.body;
     
+    if (!otp) {
+      return res.status(400).json({ error: 'OTP is required for signup' });
+    }
+
     // Validate email domain
     const emailValidation = validateEmail(email, role);
     if (!emailValidation.valid) {
@@ -253,6 +322,16 @@ app.post('/signup', async (req, res) => {
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists with this email' });
+    }
+
+    // Verify OTP
+    const otpRecord = await otpModel.findOne({ email });
+    if (!otpRecord) {
+      return res.status(400).json({ error: 'OTP has expired or was not requested. Please request a new one.' });
+    }
+
+    if (otpRecord.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
     }
     
     // Hash password with bcrypt (10 rounds of salt)
@@ -271,6 +350,9 @@ app.post('/signup', async (req, res) => {
       company: '',
       expertise: []
     });
+
+    // Delete OTP after successful verification
+    await otpModel.deleteMany({ email });
     
     // Generate JWT token with longer expiry for persistent session
     const token = jwt.sign(
@@ -397,7 +479,10 @@ app.get('/student/profile', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Students only.' });
     }
     
-    const user = await userModel.findById(req.user.id).select('-password');
+    const user = await userModel.findById(req.user.id)
+      .populate('followers', 'name profilePicture role')
+      .populate('following', 'name profilePicture role')
+      .select('-password');
     
     const tasksCompleted = await submissionModel.countDocuments({ studentId: req.user.id, status: 'reviewed' });
     const tasksActive = await submissionModel.countDocuments({ studentId: req.user.id, status: 'in-progress' });
@@ -1034,7 +1119,10 @@ app.get('/mentor/profile', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Mentors only.' });
     }
     
-    const user = await userModel.findById(req.user.id).select('-password');
+    const user = await userModel.findById(req.user.id)
+      .populate('followers', 'name profilePicture role')
+      .populate('following', 'name profilePicture role')
+      .select('-password');
     
     const totalTasks = await taskModel.countDocuments({ mentorId: req.user.id });
     const mentorTasks = await taskModel.find({ mentorId: req.user.id }).select('_id');
@@ -1799,7 +1887,10 @@ app.post('/auth/google', async (req, res) => {
 // Get public profile by ID
 app.get('/profile/:id', isLoggedIn, async (req, res) => {
   try {
-    const user = await userModel.findById(req.params.id).select('-password');
+    const user = await userModel.findById(req.params.id)
+      .populate('followers', 'name profilePicture role')
+      .populate('following', 'name profilePicture role')
+      .select('-password');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -1824,6 +1915,57 @@ app.get('/profile/:id', isLoggedIn, async (req, res) => {
     res.json({ success: true, user, stats });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch public profile' });
+  }
+});
+
+// Toggle Follow/Unfollow
+app.post('/profile/:id/follow', isLoggedIn, async (req, res) => {
+  try {
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ error: "You cannot follow yourself" });
+    }
+    
+    const targetUser = await userModel.findById(req.params.id);
+    const currentUser = await userModel.findById(req.user.id);
+    
+    if (!targetUser || !currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const isFollowing = currentUser.following.includes(targetUser._id);
+    
+    if (isFollowing) {
+      // Unfollow
+      currentUser.following.pull(targetUser._id);
+      targetUser.followers.pull(currentUser._id);
+    } else {
+      // Follow
+      currentUser.following.push(targetUser._id);
+      targetUser.followers.push(currentUser._id);
+      
+      // Create notification
+      await notificationModel.create({
+        userId: targetUser._id,
+        type: 'new_follower',
+        title: 'New Follower',
+        message: `${currentUser.name} started following you.`,
+        relatedUserId: currentUser._id,
+        actionLink: `/profile/${currentUser._id}`
+      });
+    }
+    
+    await currentUser.save();
+    await targetUser.save();
+    
+    res.json({ 
+      success: true, 
+      isFollowing: !isFollowing,
+      followersCount: targetUser.followers.length,
+      followingCount: targetUser.following.length
+    });
+  } catch (err) {
+    console.error('Error toggling follow:', err);
+    res.status(500).json({ error: 'Failed to toggle follow status' });
   }
 });
 

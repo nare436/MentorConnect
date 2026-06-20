@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Github, Linkedin, Award, Edit2, Star, Trophy, TrendingUp, Clock, ThumbsUp, MessageSquare } from 'lucide-react';
+import { Edit2, Mail, Github, Linkedin, Award, X, BookOpen, Clock, ThumbsUp, MessageSquare, Calendar, Star, Trophy, TrendingUp } from 'lucide-react';
 import { getStudentProfile, updateStudentProfile, getBadges, getStudentPointsBreakdown, getTopPosts } from '../utils/api';
+import FollowListModal from './FollowListModal';
 
 // Student Profile Component with backend integration
 function StudentProfile({ setCurrentPage, userData }) {
@@ -12,6 +13,8 @@ function StudentProfile({ setCurrentPage, userData }) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
   const [badges, setBadges] = useState([]);
   const [pointsData, setPointsData] = useState({ totalPoints: 0, rank: 0, breakdown: [] });
   
@@ -27,6 +30,11 @@ function StudentProfile({ setCurrentPage, userData }) {
     linkedinUrl: '',
     newSkill: '',
     topPosts: [],
+    followers: [],
+    following: [],
+    followersCount: 0,
+    followingCount: 0,
+    createdAt: null,
     stats: {
       tasksCompleted: 0,
       tasksActive: 0,
@@ -85,7 +93,12 @@ function StudentProfile({ setCurrentPage, userData }) {
           linkedinUrl: response.user.linkedinUrl || '',
           newSkill: '',
           stats: response.stats || { tasksCompleted: 0, tasksActive: 0, badgesEarned: 0 },
-          topPosts: []
+          topPosts: [],
+          followers: response.user.followers || [],
+          following: response.user.following || [],
+          followersCount: response.user.followers?.length || 0,
+          followingCount: response.user.following?.length || 0,
+          createdAt: response.user.createdAt
         });
         
         // Fetch top posts
@@ -188,6 +201,21 @@ function StudentProfile({ setCurrentPage, userData }) {
     return Math.min(100, Math.round((earned / max) * 100));
   };
 
+  const calculateExperience = (createdAt) => {
+    if (!createdAt) return 'New Member';
+    const start = new Date(createdAt);
+    const now = new Date();
+    const diffTime = Math.abs(now - start);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) return `${diffDays} days`;
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `${diffMonths} months`;
+    const diffYears = Math.floor(diffMonths / 12);
+    const remainingMonths = diffMonths % 12;
+    return `${diffYears} yr${diffYears > 1 ? 's' : ''} ${remainingMonths > 0 ? remainingMonths + ' mo' : ''}`;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -200,8 +228,21 @@ function StudentProfile({ setCurrentPage, userData }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 transition-colors duration-300">
+      <FollowListModal 
+        isOpen={showFollowersModal} 
+        onClose={() => setShowFollowersModal(false)} 
+        title="Followers" 
+        users={profileData.followers || []} 
+      />
+      <FollowListModal 
+        isOpen={showFollowingModal} 
+        onClose={() => setShowFollowingModal(false)} 
+        title="Following" 
+        users={profileData.following || []} 
+      />
+
+      <div className="max-w-6xl mx-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -278,6 +319,32 @@ function StudentProfile({ setCurrentPage, userData }) {
                 <div className="flex items-center justify-center gap-2 mt-2 text-gray-600 dark:text-gray-300">
                   <Mail size={16} />
                   <span className="text-sm">{profileData.email}</span>
+                </div>
+                
+                {profileData.createdAt && (
+                  <div className="flex items-center justify-center gap-2 mt-3 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 py-2 rounded-lg border border-gray-100 dark:border-gray-700">
+                    <Calendar size={14} />
+                    <span className="text-xs font-medium">Joined {new Date(profileData.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                    <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{calculateExperience(profileData.createdAt)} exp</span>
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <div 
+                    className="text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
+                    onClick={() => setShowFollowersModal(true)}
+                  >
+                    <div className="font-bold text-gray-800 dark:text-gray-100">{profileData.followersCount || 0}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Followers</div>
+                  </div>
+                  <div 
+                    className="text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
+                    onClick={() => setShowFollowingModal(true)}
+                  >
+                    <div className="font-bold text-gray-800 dark:text-gray-100">{profileData.followingCount || 0}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Following</div>
+                  </div>
                 </div>
               </div>
 

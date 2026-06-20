@@ -38,6 +38,13 @@ export const signup = async (formData) => {
   });
 };
 
+export const sendOtp = async (email, role) => {
+  return apiCall('/send-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  });
+};
+
 export const login = async (formData) => {
   return apiCall('/login', {
     method: 'POST',
@@ -364,4 +371,8 @@ export const deleteCommunityPost = async (postId) => {
 
 export const deleteComment = async (postId, commentId) => {
   return apiCall(`/community/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
+};
+
+export const toggleFollow = async (userId) => {
+  return apiCall(`/profile/${userId}/follow`, { method: 'POST' });
 };

@@ -1,7 +1,7 @@
-import { Menu, X, User, LogOut, Bell, Users, Sun, Moon, Globe } from 'lucide-react';
+import { Menu, X, User, LogOut, Bell, Users, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { logout, getNotifications } from '../utils/api';
-import { useTheme } from '../context/ThemeContext';
+// import { useTheme } from '../context/ThemeContext';
 
 // Navigation bar component that shows different options based on login status
 function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
@@ -9,7 +9,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const { theme, toggleTheme } = useTheme();
+  // const { theme, toggleTheme } = useTheme();
 
   // Fetch notification count when logged in
   useEffect(() => {
@@ -161,15 +161,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
                   )}
                 </button>
 
-                {/* Theme Toggle */}
-                <button
-                  onClick={toggleTheme}
-                  className="relative p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300"
-                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                  id="theme-toggle-desktop"
-                >
-                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
+                {/* Theme Toggle Removed */}
 
                 {/* Logout Button */}
                 <button 
@@ -183,15 +175,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
               </>
             ) : (
               <>
-                {/* Theme Toggle (not logged in) */}
-                <button
-                  onClick={toggleTheme}
-                  className="relative p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300"
-                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                  id="theme-toggle-desktop-public"
-                >
-                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
+                {/* Theme Toggle Removed */}
 
                 {/* Not logged in navigation */}
                 <button 
@@ -212,15 +196,7 @@ function Navbar({ isLoggedIn, userRole, setCurrentPage, onLogout }) {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
-            {/* Mobile Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-yellow-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300"
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              id="theme-toggle-mobile"
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+            {/* Mobile Theme Toggle Removed */}
 
             {/* Mobile notification indicator */}
             {isLoggedIn && unreadCount > 0 && (

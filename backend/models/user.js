@@ -100,7 +100,17 @@ const userSchema = mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  
+  // Follow System
+  followers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  following: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 });
 
 module.exports = mongoose.model('User', userSchema);

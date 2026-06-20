@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Get MongoDB URI from environment variable or use default
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/mentor_connect';
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://[IP_ADDRESS]/mentor_connect';
 
     await mongoose.connect(mongoURI);
 

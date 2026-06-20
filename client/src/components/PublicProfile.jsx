@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Mail, Github, Linkedin, Award, Users, CheckCircle, Clock, ThumbsUp, MessageSquare } from 'lucide-react';
-import { getPublicProfile, getTopPosts } from '../utils/api';
+import { Mail, Github, Linkedin, Award, Users, CheckCircle, Clock, ThumbsUp, MessageSquare, UserPlus, UserMinus, Calendar } from 'lucide-react';
+import { getPublicProfile, getTopPosts, toggleFollow } from '../utils/api';
+import FollowListModal from './FollowListModal';
 
-function PublicProfile() {
+function PublicProfile({ userData }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [topPosts, setTopPosts] = useState([]);
+  
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -23,6 +31,11 @@ function PublicProfile() {
       const response = await getPublicProfile(id);
       if (response.success) {
         setProfileData(response);
+        setFollowersCount(response.user.followers?.length || 0);
+        setFollowingCount(response.user.following?.length || 0);
+        if (userData?.id) {
+          setIsFollowing(response.user.followers?.some(f => f._id === userData.id));
+        }
       }
       const postsResponse = await getTopPosts(id);
       if (postsResponse.success) {
@@ -55,9 +68,58 @@ function PublicProfile() {
 
   const { user, stats } = profileData;
   const isMentor = user.role === 'mentor';
+  const isOwnProfile = userData?.id === user._id;
+
+  const handleFollowToggle = async () => {
+    try {
+      // Optimistic update
+      setIsFollowing(!isFollowing);
+      setFollowersCount(prev => isFollowing ? prev - 1 : prev + 1);
+      
+      const response = await toggleFollow(user._id);
+      if (response.success) {
+        setIsFollowing(response.isFollowing);
+        setFollowersCount(response.followersCount);
+        setFollowingCount(response.followingCount);
+      }
+    } catch (err) {
+      // Revert on failure
+      setIsFollowing(!isFollowing);
+      setFollowersCount(prev => isFollowing ? prev + 1 : prev - 1);
+      console.error('Follow toggle error:', err);
+    }
+  };
+
+  const calculateExperience = (createdAt) => {
+    if (!createdAt) return 'New Member';
+    const start = new Date(createdAt);
+    const now = new Date();
+    const diffTime = Math.abs(now - start);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) return `${diffDays} days`;
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `${diffMonths} months`;
+    const diffYears = Math.floor(diffMonths / 12);
+    const remainingMonths = diffMonths % 12;
+    return `${diffYears} yr${diffYears > 1 ? 's' : ''} ${remainingMonths > 0 ? remainingMonths + ' mo' : ''}`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <FollowListModal 
+        isOpen={showFollowersModal} 
+        onClose={() => setShowFollowersModal(false)} 
+        title="Followers" 
+        users={user.followers || []} 
+      />
+      <FollowListModal 
+        isOpen={showFollowingModal} 
+        onClose={() => setShowFollowingModal(false)} 
+        title="Following" 
+        users={user.following || []} 
+      />
+
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -87,6 +149,53 @@ function PublicProfile() {
                 </div>
                 {isMentor && user.company && (
                   <p className="text-sm text-gray-600 mt-2 font-medium">{user.jobRole} at {user.company}</p>
+                )}
+                
+                <div className="flex items-center justify-center gap-2 mt-3 text-gray-500 bg-gray-50 py-2 rounded-lg border border-gray-100">
+                  <Calendar size={14} />
+                  <span className="text-xs font-medium">Joined {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                  <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                  <span className="text-xs text-indigo-600 font-semibold">{calculateExperience(user.createdAt)} exp</span>
+                </div>
+                
+                <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-gray-100">
+                  <div 
+                    className="text-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                    onClick={() => setShowFollowersModal(true)}
+                  >
+                    <div className="font-bold text-gray-800">{followersCount}</div>
+                    <div className="text-xs text-gray-500 uppercase">Followers</div>
+                  </div>
+                  <div 
+                    className="text-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                    onClick={() => setShowFollowingModal(true)}
+                  >
+                    <div className="font-bold text-gray-800">{followingCount}</div>
+                    <div className="text-xs text-gray-500 uppercase">Following</div>
+                  </div>
+                </div>
+
+                {!isOwnProfile && userData && (
+                  <button
+                    onClick={handleFollowToggle}
+                    className={`mt-4 w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors font-medium ${
+                      isFollowing 
+                        ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {isFollowing ? (
+                      <>
+                        <UserMinus size={18} />
+                        Unfollow
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={18} />
+                        Follow
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
 

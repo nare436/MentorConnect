@@ -262,7 +262,7 @@ function AppInner() {
           <Route path="/tasks" element={<BrowseTasks setCurrentPage={setCurrentPage} />} />
           <Route path="/task/:id" element={<TaskSubmission setCurrentPage={setCurrentPage} userData={userData} />} />
           <Route path="/task/:id/details" element={<TaskDetail setCurrentPage={setCurrentPage} userData={userData} />} />
-          <Route path="/profile/:id" element={isLoggedIn ? <PublicProfile /> : <Navigate to="/login" />} />
+          <Route path="/profile/:id" element={isLoggedIn ? <PublicProfile userData={userData} /> : <Navigate to="/login" />} />
 
           {/* Team management, Mentor create/eval routes — add or adjust as needed */}
           <Route path="/team-management" element={<TeamManagement setCurrentPage={setCurrentPage} userData={userData} />} />
