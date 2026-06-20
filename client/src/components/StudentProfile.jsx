@@ -4,6 +4,11 @@ import { Edit2, Mail, Github, Linkedin, Award, X, BookOpen, Clock, ThumbsUp, Mes
 import { getStudentProfile, updateStudentProfile, getBadges, getStudentPointsBreakdown, getTopPosts } from '../utils/api';
 import FollowListModal from './FollowListModal';
 
+const PLATFORMS = [
+  'LeetCode', 'Codeforces', 'GeeksForGeeks', 'TakeUForward', 'CodeChef', 'HackerRank',
+  'Instagram', 'Twitter', 'Facebook'
+];
+
 // Student Profile Component with backend integration
 function StudentProfile({ setCurrentPage, userData }) {
   const navigate = useNavigate();
@@ -17,7 +22,7 @@ function StudentProfile({ setCurrentPage, userData }) {
   const [showFollowingModal, setShowFollowingModal] = useState(false);
   const [badges, setBadges] = useState([]);
   const [pointsData, setPointsData] = useState({ totalPoints: 0, rank: 0, breakdown: [] });
-  
+
   // Profile data state
   const [profileData, setProfileData] = useState({
     name: '',
@@ -34,6 +39,7 @@ function StudentProfile({ setCurrentPage, userData }) {
     following: [],
     followersCount: 0,
     followingCount: 0,
+    socialLinks: [],
     createdAt: null,
     stats: {
       tasksCompleted: 0,
@@ -41,6 +47,8 @@ function StudentProfile({ setCurrentPage, userData }) {
       badgesEarned: 0
     }
   });
+
+  const [newLink, setNewLink] = useState({ platform: PLATFORMS[0], url: '' });
 
   // Fetch badges
   const fetchBadges = async () => {
@@ -98,9 +106,10 @@ function StudentProfile({ setCurrentPage, userData }) {
           following: response.user.following || [],
           followersCount: response.user.followers?.length || 0,
           followingCount: response.user.following?.length || 0,
+          socialLinks: response.user.socialLinks || [],
           createdAt: response.user.createdAt
         });
-        
+
         // Fetch top posts
         if (response.user && response.user._id) {
           const postsRes = await getTopPosts(response.user._id);
@@ -162,6 +171,47 @@ function StudentProfile({ setCurrentPage, userData }) {
     });
   };
 
+  // Add social link
+  const handleAddSocialLink = () => {
+    const url = newLink.url.trim();
+    if (!url) return;
+    
+    // Check if platform already exists
+    const existingLinks = profileData.socialLinks || [];
+    if (existingLinks.some(link => link.platform === newLink.platform)) {
+      setError(`You have already added a link for ${newLink.platform}.`);
+      return;
+    }
+
+    // Basic URL validation
+    const urlPattern = /^(https?:\/\/)?([\w\d-]+\.)+[\w\d]{2,}(\/.*)?$/i;
+    
+    if (!urlPattern.test(url)) {
+      setError(`Please enter a valid URL for ${newLink.platform}.`);
+      return;
+    }
+
+    // Format URL
+    let finalUrl = url;
+    if (!/^https?:\/\//i.test(finalUrl)) {
+      finalUrl = 'https://' + finalUrl;
+    }
+
+    setProfileData({
+      ...profileData,
+      socialLinks: [...existingLinks, { platform: newLink.platform, url: finalUrl }]
+    });
+    setNewLink({ platform: PLATFORMS[0], url: '' });
+    setError('');
+  };
+
+  // Remove social link
+  const handleRemoveSocialLink = (index) => {
+    const updatedLinks = [...(profileData.socialLinks || [])];
+    updatedLinks.splice(index, 1);
+    setProfileData({ ...profileData, socialLinks: updatedLinks });
+  };
+
   // Save profile with API call
   const handleSave = async () => {
     setError('');
@@ -170,7 +220,7 @@ function StudentProfile({ setCurrentPage, userData }) {
 
     try {
       const response = await updateStudentProfile(profileData);
-      
+
       if (response.success) {
         setSuccess('Profile updated successfully!');
         setIsEditing(false);
@@ -188,7 +238,7 @@ function StudentProfile({ setCurrentPage, userData }) {
   };
 
   const getDifficultyColor = (difficulty) => {
-    switch(difficulty) {
+    switch (difficulty) {
       case 'Easy': return 'bg-green-100 text-green-800';
       case 'Medium': return 'bg-yellow-100 text-yellow-800';
       case 'Hard': return 'bg-red-100 text-red-800';
@@ -207,7 +257,7 @@ function StudentProfile({ setCurrentPage, userData }) {
     const now = new Date();
     const diffTime = Math.abs(now - start);
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 30) return `${diffDays} days`;
     const diffMonths = Math.floor(diffDays / 30);
     if (diffMonths < 12) return `${diffMonths} months`;
@@ -229,21 +279,21 @@ function StudentProfile({ setCurrentPage, userData }) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 transition-colors duration-300">
-      <FollowListModal 
-        isOpen={showFollowersModal} 
-        onClose={() => setShowFollowersModal(false)} 
-        title="Followers" 
-        users={profileData.followers || []} 
+      <FollowListModal
+        isOpen={showFollowersModal}
+        onClose={() => setShowFollowersModal(false)}
+        title="Followers"
+        users={profileData.followers || []}
       />
-      <FollowListModal 
-        isOpen={showFollowingModal} 
-        onClose={() => setShowFollowingModal(false)} 
-        title="Following" 
-        users={profileData.following || []} 
+      <FollowListModal
+        isOpen={showFollowingModal}
+        onClose={() => setShowFollowingModal(false)}
+        title="Following"
+        users={profileData.following || []}
       />
 
       <div className="max-w-6xl mx-auto">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">My Profile</h1>
@@ -270,18 +320,18 @@ function StudentProfile({ setCurrentPage, userData }) {
         )}
 
         <div className="grid md:grid-cols-3 gap-6">
-          
+
           {/* Left Column - Basic Info */}
           <div className="md:col-span-1 space-y-6">
-            
+
             {/* Profile Card */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-900/30 p-6 transition-colors">
               <div className="text-center">
                 {/* Profile initial circle or picture */}
                 {profileData.profilePicture ? (
-                  <img 
-                    src={profileData.profilePicture} 
-                    alt={profileData.name} 
+                  <img
+                    src={profileData.profilePicture}
+                    alt={profileData.name}
                     className="w-24 h-24 mx-auto rounded-full object-cover mb-4 shadow-md"
                   />
                 ) : (
@@ -289,7 +339,7 @@ function StudentProfile({ setCurrentPage, userData }) {
                     {profileData.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                
+
                 {isEditing ? (
                   <div className="space-y-2 mb-4">
                     <input
@@ -315,12 +365,12 @@ function StudentProfile({ setCurrentPage, userData }) {
                 ) : (
                   <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{profileData.name}</h2>
                 )}
-                
+
                 <div className="flex items-center justify-center gap-2 mt-2 text-gray-600 dark:text-gray-300">
                   <Mail size={16} />
                   <span className="text-sm">{profileData.email}</span>
                 </div>
-                
+
                 {profileData.createdAt && (
                   <div className="flex items-center justify-center gap-2 mt-3 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 py-2 rounded-lg border border-gray-100 dark:border-gray-700">
                     <Calendar size={14} />
@@ -329,16 +379,16 @@ function StudentProfile({ setCurrentPage, userData }) {
                     <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{calculateExperience(profileData.createdAt)} exp</span>
                   </div>
                 )}
-                
+
                 <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <div 
+                  <div
                     className="text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
                     onClick={() => setShowFollowersModal(true)}
                   >
                     <div className="font-bold text-gray-800 dark:text-gray-100">{profileData.followersCount || 0}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Followers</div>
                   </div>
-                  <div 
+                  <div
                     className="text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
                     onClick={() => setShowFollowingModal(true)}
                   >
@@ -387,6 +437,55 @@ function StudentProfile({ setCurrentPage, userData }) {
                     </a>
                   )}
                 </div>
+
+                {/* Additional Social/Coding Links */}
+                {isEditing ? (
+                  <div className="mt-4 border-t border-gray-100 pt-6">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Other Links</p>
+                    <div className="space-y-2 mb-3">
+                      {(profileData.socialLinks || []).map((link, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 px-2 py-1 rounded border border-gray-200">
+                          <span className="font-medium text-gray-700">{link.platform}:</span>
+                          <span className="flex-1 text-gray-600 truncate">{link.url}</span>
+                          <button onClick={() => handleRemoveSocialLink(idx)} className="text-red-500 hover:text-red-700" disabled={isSaving}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <select
+                        value={newLink.platform}
+                        onChange={e => setNewLink({ ...newLink, platform: e.target.value })}
+                        className="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none"
+                        disabled={isSaving}
+                      >
+                        {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      <input
+                        type="text"
+                        value={newLink.url}
+                        onChange={e => setNewLink({ ...newLink, url: e.target.value })}
+                        className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none"
+                        placeholder="URL..."
+                        disabled={isSaving}
+                        onKeyPress={e => e.key === 'Enter' && handleAddSocialLink()}
+                      />
+                      <button onClick={handleAddSocialLink} disabled={isSaving} className="bg-gray-800 text-white px-3 py-1 rounded text-sm hover:bg-gray-700">Add</button>
+                    </div>
+                  </div>
+                ) : (
+                  (profileData.socialLinks || []).length > 0 && profileData.isUrlValidated && (
+                    <div className="mt-4 border-t border-gray-100 pt-3 space-y-2">
+                      {(profileData.socialLinks || []).map((link, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-24 truncate">{link.platform}</span>
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate flex-1">
+                            {link.url}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
               </div>
             </div>
 
@@ -396,7 +495,7 @@ function StudentProfile({ setCurrentPage, userData }) {
                 <Trophy className="text-yellow-500" size={22} />
                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Points & Rank</h3>
               </div>
-              
+
               <div className="text-center mb-4">
                 <div className="inline-flex items-center gap-2">
                   <Star size={24} className="text-yellow-500" />
@@ -404,14 +503,14 @@ function StudentProfile({ setCurrentPage, userData }) {
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Total Points Earned</p>
               </div>
-              
+
               {pointsData.rank > 0 && (
                 <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-3 mb-4 text-center">
                   <p className="text-xs text-yellow-800 uppercase font-semibold">Current Rank</p>
                   <p className="text-2xl font-bold text-yellow-700 mt-1">#{pointsData.rank}</p>
                 </div>
               )}
-              
+
               {/* Points Milestones */}
               <div className="space-y-2">
                 {[100, 250, 500, 1000].map(milestone => (
@@ -421,10 +520,9 @@ function StudentProfile({ setCurrentPage, userData }) {
                       <span>{Math.min(100, Math.round((pointsData.totalPoints / milestone) * 100))}%</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                      <div 
-                        className={`h-1.5 rounded-full transition-all ${
-                          pointsData.totalPoints >= milestone ? 'bg-yellow-500' : 'bg-yellow-300'
-                        }`}
+                      <div
+                        className={`h-1.5 rounded-full transition-all ${pointsData.totalPoints >= milestone ? 'bg-yellow-500' : 'bg-yellow-300'
+                          }`}
                         style={{ width: `${Math.min(100, (pointsData.totalPoints / milestone) * 100)}%` }}
                       ></div>
                     </div>
@@ -454,7 +552,7 @@ function StudentProfile({ setCurrentPage, userData }) {
                 <Award className="text-gray-600 dark:text-gray-300" size={20} />
                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Badges</h3>
               </div>
-              
+
               <div className="space-y-3">
                 {badges.length > 0 ? (
                   badges.map(badge => (
@@ -475,7 +573,7 @@ function StudentProfile({ setCurrentPage, userData }) {
 
           {/* Right Column - Details */}
           <div className="md:col-span-2 space-y-6">
-            
+
             {/* Bio */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">About Me</h3>
@@ -564,21 +662,20 @@ function StudentProfile({ setCurrentPage, userData }) {
                 <TrendingUp size={20} className="text-gray-600 dark:text-gray-300" />
                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Contribution Timeline</h3>
               </div>
-              
+
               {pointsData.breakdown.length > 0 ? (
                 <div className="space-y-4">
                   {pointsData.breakdown.map((entry, idx) => (
                     <div key={idx} className="flex gap-4">
                       {/* Timeline dot */}
                       <div className="flex flex-col items-center">
-                        <div className={`w-3 h-3 rounded-full ${
-                          idx === 0 ? 'bg-green-500' : 'bg-gray-300'
-                        }`}></div>
+                        <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-green-500' : 'bg-gray-300'
+                          }`}></div>
                         {idx < pointsData.breakdown.length - 1 && (
                           <div className="w-0.5 h-full bg-gray-200 dark:bg-gray-700 mt-1"></div>
                         )}
                       </div>
-                      
+
                       {/* Content */}
                       <div className="flex-1 pb-4">
                         <div className="flex items-start justify-between">
@@ -601,21 +698,20 @@ function StudentProfile({ setCurrentPage, userData }) {
                             </span>
                           </div>
                         </div>
-                        
+
                         {/* Score bar */}
                         <div className="mt-2">
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full transition-all ${
-                                getPointsPercentage(entry.earnedPoints, entry.maxPoints) >= 80 ? 'bg-green-500'
+                            <div
+                              className={`h-2 rounded-full transition-all ${getPointsPercentage(entry.earnedPoints, entry.maxPoints) >= 80 ? 'bg-green-500'
                                 : getPointsPercentage(entry.earnedPoints, entry.maxPoints) >= 50 ? 'bg-yellow-500'
-                                : 'bg-red-400'
-                              }`}
+                                  : 'bg-red-400'
+                                }`}
                               style={{ width: `${getPointsPercentage(entry.earnedPoints, entry.maxPoints)}%` }}
                             ></div>
                           </div>
                         </div>
-                        
+
                         {entry.feedback && (
                           <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded text-xs text-blue-800">
                             <span className="font-semibold">Mentor Feedback:</span> {entry.feedback}
@@ -651,8 +747,8 @@ function StudentProfile({ setCurrentPage, userData }) {
                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">My Top Posts</h3>
                 <div className="space-y-4">
                   {profileData.topPosts.map(post => (
-                    <div 
-                      key={post._id} 
+                    <div
+                      key={post._id}
                       onClick={() => navigate(`/post/${post._id}`)}
                       className="border border-gray-100 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors"
                     >

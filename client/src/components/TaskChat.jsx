@@ -8,8 +8,9 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
   const [newMessage, setNewMessage] = useState('');
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [isOpen, setIsOpen] = useState(true); // Auto-open by default per user request
+  const [isOpen, setIsOpen] = useState(false); // Closed by default
   const [isLoading, setIsLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef(null);
 
   // Load chat history from database
@@ -53,6 +54,14 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
 
     socketInstance.on('new-task-message', (messageData) => {
       setMessages(prev => [...prev, messageData]);
+      
+      // If chat is closed, increment unread count
+      setIsOpen(currentIsOpen => {
+        if (!currentIsOpen) {
+          setUnreadCount(prev => prev + 1);
+        }
+        return currentIsOpen;
+      });
     });
 
     return () => socketInstance.disconnect();
@@ -137,7 +146,7 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
                     </p>
                     <p className="text-sm">{msg.message}</p>
                     <p className="text-xs mt-1 opacity-70">
-                      {new Date(timestamp).toLocaleTimeString()}
+                      {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
@@ -176,11 +185,19 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
       {/* Chat Toggle Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700"
+          onClick={() => {
+            setIsOpen(true);
+            setUnreadCount(0); // Reset unread count when opening
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 relative"
         >
           <MessageSquare size={20} />
           Chat
+          {unreadCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
+              {unreadCount}
+            </span>
+          )}
         </button>
       )}
 
@@ -236,7 +253,7 @@ function TaskChat({ taskId, userData, inline = false, onClose }) {
                       </p>
                       <p className="text-sm">{msg.message}</p>
                       <p className="text-xs mt-1 opacity-70">
-                        {new Date(timestamp).toLocaleTimeString()}
+                        {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>

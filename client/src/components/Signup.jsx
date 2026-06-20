@@ -317,6 +317,14 @@ function Signup({ setCurrentPage, onLogin }) {
             </>
           ) : (
             <>
+              {/* Spam Notice */}
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 rounded text-sm flex items-start gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Please check your <strong>spam/junk folder</strong> if you don't see the OTP in your inbox.</span>
+              </div>
+
               {/* OTP Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

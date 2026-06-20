@@ -194,7 +194,7 @@ function TeamChat({ teamId, taskId, userData, isOpen, onClose, inline = false })
                     </p>
                     <p className="text-sm break-words">{msg.message}</p>
                     <p className="text-xs mt-1 opacity-70">
-                      {new Date(msg.createdAt || msg.timestamp).toLocaleTimeString()}
+                      {new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>

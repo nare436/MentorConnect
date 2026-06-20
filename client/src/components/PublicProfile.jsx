@@ -217,6 +217,20 @@ function PublicProfile({ userData }) {
                     </a>
                   </div>
                 )}
+                
+                {(user.socialLinks || []).length > 0 && (
+                  <div className="mt-4 border-t border-gray-100 pt-3 space-y-2 text-left">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Other Links</p>
+                    {(user.socialLinks || []).map((link, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700 w-24 truncate">{link.platform}</span>
+                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate flex-1">
+                          {link.url}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

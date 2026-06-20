@@ -507,7 +507,7 @@ app.post('/student/profile/update', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Students only.' });
     }
     
-    const { name, bio, skills, education, githubUrl, linkedinUrl, profilePicture } = req.body;
+    const { name, bio, skills, education, githubUrl, linkedinUrl, profilePicture, socialLinks } = req.body;
     
     const user = await userModel.findByIdAndUpdate(
       req.user.id,
@@ -518,7 +518,8 @@ app.post('/student/profile/update', isLoggedIn, async (req, res) => {
         education,
         githubUrl,
         linkedinUrl,
-        profilePicture
+        profilePicture,
+        socialLinks
       },
       { new: true }
     ).select('-password');
@@ -635,7 +636,19 @@ app.get('/tasks/:id', isLoggedIn, async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
     
-    res.json({ success: true, task });
+    let existingSubmission = null;
+    if (req.user && req.user.role === 'student') {
+      const userTeam = await teamModel.findOne({ members: req.user.id });
+      const query = { taskId: req.params.id };
+      if (userTeam) {
+        query.$or = [{ studentId: req.user.id }, { teamId: userTeam._id }];
+      } else {
+        query.studentId = req.user.id;
+      }
+      existingSubmission = await submissionModel.findOne(query);
+    }
+    
+    res.json({ success: true, task, existingSubmission });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch task' });
   }
@@ -1151,11 +1164,11 @@ app.post('/mentor/profile/update', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Mentors only.' });
     }
     
-    const { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture } = req.body;
+    const { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture, socialLinks } = req.body;
     
     const user = await userModel.findByIdAndUpdate(
       req.user.id,
-      { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture },
+      { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture, socialLinks },
       { new: true }
     ).select('-password');
     
@@ -1294,7 +1307,7 @@ app.get('/mentor/submissions', isLoggedIn, async (req, res) => {
     const submissions = await submissionModel
       .find({ taskId: { $in: taskIds } })
       .populate('studentId', 'name email')
-      .populate('taskId', 'title')
+      .populate('taskId', 'title totalPoints')
       .populate({
         path: 'teamId',
         select: 'name members',

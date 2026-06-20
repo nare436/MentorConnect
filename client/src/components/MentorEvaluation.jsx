@@ -36,7 +36,8 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
     setIsSubmitting(true);
 
     const marksGiven = parseInt(mark) || 0;
-    const totalScore = marksGiven;
+    const taskTotalPoints = submission.taskId?.totalPoints || 100;
+    const totalScore = (marksGiven / 10) * taskTotalPoints;
 
     try {
       const response = await evaluateSubmission(submission._id, {
@@ -89,8 +90,16 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
           <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">{submission.taskId?.title}</h1>
           <p className="text-gray-600 dark:text-gray-300">Student: {submission.studentId?.name}</p>
           {submission.githubUrl && (
-            <a href={submission.githubUrl} target="_blank" rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-sm">View GitHub</a>
+            <div className="mt-2">
+              <a href={submission.githubUrl} target="_blank" rel="noopener noreferrer"
+                className="text-blue-600 hover:underline text-sm font-medium">View GitHub Repository</a>
+            </div>
+          )}
+          {submission.notes && (
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Student's Completion Notes:</h3>
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">{submission.notes}</p>
+            </div>
           )}
         </div>
 
@@ -103,13 +112,18 @@ function MentorEvaluation({ setCurrentPage, submissionId }) {
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <p className="text-gray-700 dark:text-gray-200">Overall Performance</p>
-                    <p className="text-sm text-gray-500">Max: {submission.taskId?.totalPoints || 0} marks</p>
+                    <p className="text-gray-700 dark:text-gray-200">Overall Performance Rating</p>
+                    <p className="text-sm text-gray-500">Task Points: {submission.taskId?.totalPoints || 0}</p>
+                    {mark && (
+                      <p className="text-xs text-green-600 mt-1 font-medium">
+                        Student will be awarded: {((parseInt(mark) || 0) / 10) * (submission.taskId?.totalPoints || 100)} points
+                      </p>
+                    )}
                   </div>
                   <input
                     type="number"
                     min="0"
-                    max={submission.taskId?.totalPoints || 0}
+                    max="10"
                     value={mark}
                     onChange={(e) => setMark(e.target.value)}
                     className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center"

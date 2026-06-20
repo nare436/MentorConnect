@@ -49,6 +49,10 @@ const userSchema = mongoose.Schema({
     type: String,
     default: ''
   },
+  socialLinks: [{
+    platform: String,
+    url: String
+  }],
   
   // Student-specific fields
   skills: {
