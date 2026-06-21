@@ -666,7 +666,7 @@ function StudentProfile({ setCurrentPage, userData }) {
             {/* Top Posts Section */}
             {profileData.topPosts?.length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">My Top Posts</h3>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Top Posts</h3>
                 <div className="space-y-4">
                   {profileData.topPosts.map(post => (
                     <div

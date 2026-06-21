@@ -13,10 +13,10 @@ function MentorProfile({ setCurrentPage, userData }) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [showFollowingModal, setShowFollowingModal] = useState(false);
-  
+
   // Profile data state
   const [profileData, setProfileData] = useState({
     name: '',
@@ -70,7 +70,7 @@ function MentorProfile({ setCurrentPage, userData }) {
           linkedinUrl: response.user.linkedinUrl || '',
           createdAt: response.user.createdAt
         });
-        
+
         // Fetch top posts
         if (response.user && response.user._id) {
           const postsRes = await getTopPosts(response.user._id);
@@ -142,7 +142,7 @@ function MentorProfile({ setCurrentPage, userData }) {
 
     try {
       const response = await updateMentorProfile(profileData);
-      
+
       if (response.success) {
         setSuccess('Profile updated successfully!');
         setIsEditing(false);
@@ -173,7 +173,7 @@ function MentorProfile({ setCurrentPage, userData }) {
     const now = new Date();
     const diffTime = Math.abs(now - start);
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 30) return `${diffDays} days`;
     const diffMonths = Math.floor(diffDays / 30);
     if (diffMonths < 12) return `${diffMonths} months`;
@@ -184,21 +184,21 @@ function MentorProfile({ setCurrentPage, userData }) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <FollowListModal 
-        isOpen={showFollowersModal} 
-        onClose={() => setShowFollowersModal(false)} 
-        title="Followers" 
-        users={profileData.followers || []} 
+      <FollowListModal
+        isOpen={showFollowersModal}
+        onClose={() => setShowFollowersModal(false)}
+        title="Followers"
+        users={profileData.followers || []}
       />
-      <FollowListModal 
-        isOpen={showFollowingModal} 
-        onClose={() => setShowFollowingModal(false)} 
-        title="Following" 
-        users={profileData.following || []} 
+      <FollowListModal
+        isOpen={showFollowingModal}
+        onClose={() => setShowFollowingModal(false)}
+        title="Following"
+        users={profileData.following || []}
       />
 
       <div className="max-w-5xl mx-auto">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">My Profile</h1>
@@ -225,18 +225,18 @@ function MentorProfile({ setCurrentPage, userData }) {
         )}
 
         <div className="grid md:grid-cols-3 gap-6">
-          
+
           {/* Left Column - Basic Info */}
           <div className="md:col-span-1 space-y-6">
-            
+
             {/* Profile Card */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <div className="text-center">
                 {/* Profile initial circle or picture */}
                 {profileData.profilePicture ? (
-                  <img 
-                    src={profileData.profilePicture} 
-                    alt={profileData.name} 
+                  <img
+                    src={profileData.profilePicture}
+                    alt={profileData.name}
                     className="w-24 h-24 mx-auto rounded-full object-cover mb-4 shadow-md"
                   />
                 ) : (
@@ -244,7 +244,7 @@ function MentorProfile({ setCurrentPage, userData }) {
                     {profileData.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                
+
                 {isEditing ? (
                   <div className="space-y-2 mb-4">
                     <input
@@ -270,12 +270,12 @@ function MentorProfile({ setCurrentPage, userData }) {
                 ) : (
                   <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{profileData.name}</h2>
                 )}
-                
+
                 <div className="flex items-center justify-center gap-2 mt-2 text-gray-600 dark:text-gray-300">
                   <Mail size={16} />
                   <span className="text-sm">{profileData.email}</span>
                 </div>
-                
+
                 {profileData.createdAt && (
                   <div className="flex items-center justify-center gap-2 mt-3 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 py-2 rounded-lg border border-gray-100 dark:border-gray-700">
                     <Calendar size={14} />
@@ -284,16 +284,16 @@ function MentorProfile({ setCurrentPage, userData }) {
                     <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{calculateExperience(profileData.createdAt)} exp</span>
                   </div>
                 )}
-                
+
                 <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <div 
+                  <div
                     className="text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
                     onClick={() => setShowFollowersModal(true)}
                   >
                     <div className="font-bold text-gray-800 dark:text-gray-100">{profileData.followersCount || 0}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">Followers</div>
                   </div>
-                  <div 
+                  <div
                     className="text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
                     onClick={() => setShowFollowingModal(true)}
                   >
@@ -371,7 +371,7 @@ function MentorProfile({ setCurrentPage, userData }) {
             {/* Mentoring Stats */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Mentoring Impact</h3>
-              
+
               <div className="space-y-4">
                 <div>
                   <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{profileData.stats?.totalTasks || 0}</p>
@@ -391,7 +391,7 @@ function MentorProfile({ setCurrentPage, userData }) {
 
           {/* Right Column - Details */}
           <div className="md:col-span-2 space-y-6">
-            
+
             {/* Bio */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">About Me</h3>
@@ -490,11 +490,11 @@ function MentorProfile({ setCurrentPage, userData }) {
             {/* Top Posts Section */}
             {profileData.topPosts?.length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">My Top Posts</h3>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Top Posts</h3>
                 <div className="space-y-4">
                   {profileData.topPosts.map(post => (
-                    <div 
-                      key={post._id} 
+                    <div
+                      key={post._id}
                       onClick={() => navigate(`/post/${post._id}`)}
                       className="border border-gray-100 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors"
                     >
