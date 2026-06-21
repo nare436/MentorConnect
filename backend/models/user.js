@@ -41,18 +41,18 @@ const userSchema = mongoose.Schema({
     type: String,
     default: ''
   },
-  githubUrl: {
-    type: String,
-    default: ''
-  },
   linkedinUrl: {
     type: String,
     default: ''
   },
-  socialLinks: [{
-    platform: String,
-    url: String
-  }],
+  githubUrl: {
+    type: String,
+    default: ''
+  },
+  leetcodeUrl: {
+    type: String,
+    default: ''
+  },
   
   // Student-specific fields
   skills: {

@@ -45,6 +45,20 @@ export const sendOtp = async (email, role) => {
   });
 };
 
+export const sendForgotPasswordOtp = async (email, role) => {
+  return apiCall('/forgot-password-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  });
+};
+
+export const resetPassword = async (email, otp, newPassword) => {
+  return apiCall('/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ email, otp, newPassword }),
+  });
+};
+
 export const login = async (formData) => {
   return apiCall('/login', {
     method: 'POST',

@@ -1,13 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Briefcase, Building, Edit2, ThumbsUp, MessageSquare, Calendar } from 'lucide-react';
+import { Mail, Briefcase, Building, Edit2, ThumbsUp, MessageSquare, Calendar, Linkedin } from 'lucide-react';
 import { getMentorProfile, updateMentorProfile, getTopPosts } from '../utils/api';
 import FollowListModal from './FollowListModal';
-
-const PLATFORMS = [
-  'LeetCode', 'Codeforces', 'GeeksForGeeks', 'TakeUForward', 'CodeChef', 'HackerRank',
-  'Instagram', 'Twitter', 'Facebook'
-];
 
 // Mentor Profile Component with backend integration
 function MentorProfile({ setCurrentPage, userData }) {
@@ -38,7 +33,7 @@ function MentorProfile({ setCurrentPage, userData }) {
     following: [],
     followersCount: 0,
     followingCount: 0,
-    socialLinks: [],
+    linkedinUrl: '',
     createdAt: null,
     stats: {
       totalTasks: 0,
@@ -46,8 +41,6 @@ function MentorProfile({ setCurrentPage, userData }) {
       studentsHelped: 0
     }
   });
-
-  const [newLink, setNewLink] = useState({ platform: PLATFORMS[0], url: '' });
 
   // Fetch profile on mount
   useEffect(() => {
@@ -74,7 +67,7 @@ function MentorProfile({ setCurrentPage, userData }) {
           following: response.user.following || [],
           followersCount: response.user.followers?.length || 0,
           followingCount: response.user.following?.length || 0,
-          socialLinks: response.user.socialLinks || [],
+          linkedinUrl: response.user.linkedinUrl || '',
           createdAt: response.user.createdAt
         });
         
@@ -139,47 +132,6 @@ function MentorProfile({ setCurrentPage, userData }) {
       ...profileData,
       expertise: profileData.expertise.filter(item => item !== itemToRemove)
     });
-  };
-
-  // Add social link
-  const handleAddSocialLink = () => {
-    const url = newLink.url.trim();
-    if (!url) return;
-    
-    // Check if platform already exists
-    const existingLinks = profileData.socialLinks || [];
-    if (existingLinks.some(link => link.platform === newLink.platform)) {
-      setError(`You have already added a link for ${newLink.platform}.`);
-      return;
-    }
-
-    // Basic URL validation
-    const urlPattern = /^(https?:\/\/)?([\w\d-]+\.)+[\w\d]{2,}(\/.*)?$/i;
-    
-    if (!urlPattern.test(url)) {
-      setError(`Please enter a valid URL for ${newLink.platform}.`);
-      return;
-    }
-
-    // Format URL
-    let finalUrl = url;
-    if (!/^https?:\/\//i.test(finalUrl)) {
-      finalUrl = 'https://' + finalUrl;
-    }
-
-    setProfileData({
-      ...profileData,
-      socialLinks: [...existingLinks, { platform: newLink.platform, url: finalUrl }]
-    });
-    setNewLink({ platform: PLATFORMS[0], url: '' });
-    setError('');
-  };
-
-  // Remove social link
-  const handleRemoveSocialLink = (index) => {
-    const updatedLinks = [...(profileData.socialLinks || [])];
-    updatedLinks.splice(index, 1);
-    setProfileData({ ...profileData, socialLinks: updatedLinks });
   };
 
   // Save profile with API call
@@ -350,54 +302,28 @@ function MentorProfile({ setCurrentPage, userData }) {
                   </div>
                 </div>
 
-                {/* Additional Social/Coding Links */}
-                {isEditing ? (
-                  <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4 text-left">
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Social & Links</p>
-                    <div className="space-y-2 mb-3">
-                      {(profileData.socialLinks || []).map((link, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded border border-gray-200 dark:border-gray-600">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">{link.platform}:</span>
-                          <span className="flex-1 text-gray-600 dark:text-gray-400 truncate">{link.url}</span>
-                          <button onClick={() => handleRemoveSocialLink(idx)} className="text-red-500 hover:text-red-700" disabled={isSaving}>×</button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <select 
-                        value={newLink.platform} 
-                        onChange={e => setNewLink({...newLink, platform: e.target.value})}
-                        className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 dark:text-gray-200 focus:outline-none"
-                        disabled={isSaving}
-                      >
-                        {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
+                {/* LinkedIn Link */}
+                <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4 text-left">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Social</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Linkedin size={18} className="text-gray-600 dark:text-gray-300" />
+                    {isEditing ? (
                       <input
                         type="text"
-                        value={newLink.url}
-                        onChange={e => setNewLink({...newLink, url: e.target.value})}
-                        className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-800 dark:text-gray-200 focus:outline-none"
-                        placeholder="URL..."
+                        name="linkedinUrl"
+                        value={profileData.linkedinUrl}
+                        onChange={handleChange}
+                        className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                        placeholder="LinkedIn URL"
                         disabled={isSaving}
-                        onKeyPress={e => e.key === 'Enter' && handleAddSocialLink()}
                       />
-                      <button onClick={handleAddSocialLink} disabled={isSaving} className="bg-gray-800 dark:bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700">Add</button>
-                    </div>
+                    ) : (
+                      <a href={profileData.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                        {profileData.linkedinUrl ? 'LinkedIn Profile' : 'Add LinkedIn'}
+                      </a>
+                    )}
                   </div>
-                ) : (
-                  (profileData.socialLinks || []).length > 0 && (
-                    <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-3 space-y-2 text-left">
-                      {(profileData.socialLinks || []).map((link, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-24 truncate">{link.platform}</span>
-                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate flex-1">
-                            {link.url}
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                )}
+                </div>
               </div>
 
               {/* Professional Info */}

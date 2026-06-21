@@ -4,11 +4,6 @@ import { Edit2, Mail, Github, Linkedin, Award, X, BookOpen, Clock, ThumbsUp, Mes
 import { getStudentProfile, updateStudentProfile, getBadges, getStudentPointsBreakdown, getTopPosts } from '../utils/api';
 import FollowListModal from './FollowListModal';
 
-const PLATFORMS = [
-  'LeetCode', 'Codeforces', 'GeeksForGeeks', 'TakeUForward', 'CodeChef', 'HackerRank',
-  'Instagram', 'Twitter', 'Facebook'
-];
-
 // Student Profile Component with backend integration
 function StudentProfile({ setCurrentPage, userData }) {
   const navigate = useNavigate();
@@ -33,13 +28,13 @@ function StudentProfile({ setCurrentPage, userData }) {
     education: '',
     githubUrl: '',
     linkedinUrl: '',
+    leetcodeUrl: '',
     newSkill: '',
     topPosts: [],
     followers: [],
     following: [],
     followersCount: 0,
     followingCount: 0,
-    socialLinks: [],
     createdAt: null,
     stats: {
       tasksCompleted: 0,
@@ -47,8 +42,6 @@ function StudentProfile({ setCurrentPage, userData }) {
       badgesEarned: 0
     }
   });
-
-  const [newLink, setNewLink] = useState({ platform: PLATFORMS[0], url: '' });
 
   // Fetch badges
   const fetchBadges = async () => {
@@ -99,6 +92,7 @@ function StudentProfile({ setCurrentPage, userData }) {
           education: response.user.education || '',
           githubUrl: response.user.githubUrl || '',
           linkedinUrl: response.user.linkedinUrl || '',
+          leetcodeUrl: response.user.leetcodeUrl || '',
           newSkill: '',
           stats: response.stats || { tasksCompleted: 0, tasksActive: 0, badgesEarned: 0 },
           topPosts: [],
@@ -106,7 +100,6 @@ function StudentProfile({ setCurrentPage, userData }) {
           following: response.user.following || [],
           followersCount: response.user.followers?.length || 0,
           followingCount: response.user.following?.length || 0,
-          socialLinks: response.user.socialLinks || [],
           createdAt: response.user.createdAt
         });
 
@@ -169,47 +162,6 @@ function StudentProfile({ setCurrentPage, userData }) {
       ...profileData,
       skills: profileData.skills.filter(skill => skill !== skillToRemove)
     });
-  };
-
-  // Add social link
-  const handleAddSocialLink = () => {
-    const url = newLink.url.trim();
-    if (!url) return;
-    
-    // Check if platform already exists
-    const existingLinks = profileData.socialLinks || [];
-    if (existingLinks.some(link => link.platform === newLink.platform)) {
-      setError(`You have already added a link for ${newLink.platform}.`);
-      return;
-    }
-
-    // Basic URL validation
-    const urlPattern = /^(https?:\/\/)?([\w\d-]+\.)+[\w\d]{2,}(\/.*)?$/i;
-    
-    if (!urlPattern.test(url)) {
-      setError(`Please enter a valid URL for ${newLink.platform}.`);
-      return;
-    }
-
-    // Format URL
-    let finalUrl = url;
-    if (!/^https?:\/\//i.test(finalUrl)) {
-      finalUrl = 'https://' + finalUrl;
-    }
-
-    setProfileData({
-      ...profileData,
-      socialLinks: [...existingLinks, { platform: newLink.platform, url: finalUrl }]
-    });
-    setNewLink({ platform: PLATFORMS[0], url: '' });
-    setError('');
-  };
-
-  // Remove social link
-  const handleRemoveSocialLink = (index) => {
-    const updatedLinks = [...(profileData.socialLinks || [])];
-    updatedLinks.splice(index, 1);
-    setProfileData({ ...profileData, socialLinks: updatedLinks });
   };
 
   // Save profile with API call
@@ -438,54 +390,24 @@ function StudentProfile({ setCurrentPage, userData }) {
                   )}
                 </div>
 
-                {/* Additional Social/Coding Links */}
-                {isEditing ? (
-                  <div className="mt-4 border-t border-gray-100 pt-6">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Other Links</p>
-                    <div className="space-y-2 mb-3">
-                      {(profileData.socialLinks || []).map((link, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 px-2 py-1 rounded border border-gray-200">
-                          <span className="font-medium text-gray-700">{link.platform}:</span>
-                          <span className="flex-1 text-gray-600 truncate">{link.url}</span>
-                          <button onClick={() => handleRemoveSocialLink(idx)} className="text-red-500 hover:text-red-700" disabled={isSaving}>×</button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <select
-                        value={newLink.platform}
-                        onChange={e => setNewLink({ ...newLink, platform: e.target.value })}
-                        className="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none"
-                        disabled={isSaving}
-                      >
-                        {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                      <input
-                        type="text"
-                        value={newLink.url}
-                        onChange={e => setNewLink({ ...newLink, url: e.target.value })}
-                        className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none"
-                        placeholder="URL..."
-                        disabled={isSaving}
-                        onKeyPress={e => e.key === 'Enter' && handleAddSocialLink()}
-                      />
-                      <button onClick={handleAddSocialLink} disabled={isSaving} className="bg-gray-800 text-white px-3 py-1 rounded text-sm hover:bg-gray-700">Add</button>
-                    </div>
-                  </div>
-                ) : (
-                  (profileData.socialLinks || []).length > 0 && profileData.isUrlValidated && (
-                    <div className="mt-4 border-t border-gray-100 pt-3 space-y-2">
-                      {(profileData.socialLinks || []).map((link, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-24 truncate">{link.platform}</span>
-                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate flex-1">
-                            {link.url}
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                )}
+                <div className="flex items-center gap-2">
+                  <BookOpen size={18} className="text-gray-600 dark:text-gray-300" />
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="leetcodeUrl"
+                      value={profileData.leetcodeUrl}
+                      onChange={handleChange}
+                      className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                      placeholder="LeetCode URL"
+                      disabled={isSaving}
+                    />
+                  ) : (
+                    <a href={profileData.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                      {profileData.leetcodeUrl ? 'LeetCode Profile' : 'Add LeetCode'}
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 

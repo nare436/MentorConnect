@@ -8,6 +8,7 @@ import { verifyToken } from './utils/api';
 import Navbar from './components/Navbar';
 import Signup from './components/Signup';
 import Login from './components/Login';
+import ForgotPassword from './components/ForgotPassword';
 import StudentDashboard from './components/StudentDashboard';
 import MentorDashboardEnhanced from './components/MentorDashboardEnhanced';
 import StudentProfile from './components/StudentProfile';
@@ -125,6 +126,7 @@ function AppInner() {
       case 'home': return '/';
       case 'signup': return '/signup';
       case 'login': return '/login';
+      case 'forgot-password': return '/forgot-password';
       case 'student-dashboard': return '/student/dashboard';
       case 'mentor-dashboard': return '/mentor/dashboard';
       case 'student-profile': return '/student/profile';
@@ -212,6 +214,10 @@ function AppInner() {
           <Route
             path="/login"
             element={isLoggedIn ? <Navigate to={`/${userRole}/dashboard`} /> : <Login setCurrentPage={setCurrentPage} onLogin={handleLogin} />}
+          />
+          <Route
+            path="/forgot-password"
+            element={isLoggedIn ? <Navigate to={`/${userRole}/dashboard`} /> : <ForgotPassword setCurrentPage={setCurrentPage} />}
           />
 
           {/* Student Protected */}

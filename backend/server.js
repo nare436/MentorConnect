@@ -440,6 +440,101 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Forgot password OTP route
+app.post('/forgot-password-otp', async (req, res) => {
+  try {
+    const { email, role } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Validate email domain
+    const emailValidation = validateEmail(email, role);
+    if (!emailValidation.valid) {
+      return res.status(400).json({ error: emailValidation.error });
+    }
+
+    // Check if user exists
+    const existingUser = await userModel.findOne({ email });
+    if (!existingUser) {
+      return res.status(400).json({ error: 'No user found with this email' });
+    }
+    
+    // Check role matches
+    if (existingUser.role !== role) {
+      return res.status(400).json({ error: 'Role mismatch for this email' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Delete any existing OTP for this email
+    await otpModel.deleteMany({ email });
+
+    // Save new OTP to database
+    await otpModel.create({ email, otp });
+
+    // Send email via Nodemailer
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const mailOptions = {
+        from: `"MentorConnect" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'Password Reset OTP for MentorConnect',
+        text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
+        html: `<p>Your OTP for password reset is: <b>${otp}</b></p><p>It is valid for 10 minutes.</p>`
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`Password reset OTP successfully sent to ${email}`);
+    } else {
+      console.warn('WARNING: EMAIL_USER or EMAIL_PASS is not set in .env. OTP was generated but not sent via email.');
+      console.log(`[DEV MODE] The password reset OTP for ${email} is: ${otp}`);
+    }
+
+    res.json({ success: true, message: 'OTP sent to your email' });
+  } catch (err) {
+    console.error('Send Forgot Password OTP error:', err);
+    res.status(500).json({ error: 'Failed to send OTP: ' + err.message });
+  }
+});
+
+// Reset password route
+app.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    
+    if (!otp || !newPassword) {
+      return res.status(400).json({ error: 'OTP and new password are required' });
+    }
+
+    // Verify OTP
+    const otpRecord = await otpModel.findOne({ email });
+    if (!otpRecord) {
+      return res.status(400).json({ error: 'OTP has expired or was not requested. Please request a new one.' });
+    }
+
+    if (otpRecord.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
+    }
+    
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    
+    // Update user password
+    await userModel.findOneAndUpdate({ email }, { password: hashedPassword });
+
+    // Delete OTP after successful verification
+    await otpModel.deleteMany({ email });
+    
+    res.json({ success: true, message: 'Password has been reset successfully. You can now login.' });
+    
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Reset password failed: ' + err.message });
+  }
+});
+
 // Verify token route - for checking if user is still logged in after page reload
 app.get('/verify-token', isLoggedIn, async (req, res) => {
   try {
@@ -507,7 +602,7 @@ app.post('/student/profile/update', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Students only.' });
     }
     
-    const { name, bio, skills, education, githubUrl, linkedinUrl, profilePicture, socialLinks } = req.body;
+    const { name, bio, skills, education, githubUrl, linkedinUrl, leetcodeUrl, profilePicture } = req.body;
     
     const user = await userModel.findByIdAndUpdate(
       req.user.id,
@@ -518,8 +613,8 @@ app.post('/student/profile/update', isLoggedIn, async (req, res) => {
         education,
         githubUrl,
         linkedinUrl,
-        profilePicture,
-        socialLinks
+        leetcodeUrl,
+        profilePicture
       },
       { new: true }
     ).select('-password');
@@ -1164,11 +1259,11 @@ app.post('/mentor/profile/update', isLoggedIn, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Mentors only.' });
     }
     
-    const { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture, socialLinks } = req.body;
+    const { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture, linkedinUrl } = req.body;
     
     const user = await userModel.findByIdAndUpdate(
       req.user.id,
-      { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture, socialLinks },
+      { name, bio, company, jobRole, expertise, yearsOfExperience, profilePicture, linkedinUrl },
       { new: true }
     ).select('-password');
     
